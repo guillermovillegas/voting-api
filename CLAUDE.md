@@ -6,6 +6,38 @@ This project is designed to stress-test multiple AI agents working concurrently 
 
 ---
 
+## 🚨 STRESS TEST FINDINGS (2025-01-20)
+
+### Critical Issues Discovered
+1. **Bash permissions block git operations** - Subagents can't run git without approval
+2. **Infinite retry loops** - Agents retry failing commands indefinitely
+3. **No branch isolation** - Without git, all changes go to main
+4. **Protected file violations** - Time pressure causes agents to ignore rules
+
+### Required Mitigations
+- **Pre-create branches** before launching agents
+- **Grant bash permissions** explicitly for git operations
+- **Add retry limits** - Max 3 attempts, then ask for help
+- **Enforce file ownership** - Block writes outside assigned modules
+
+---
+
+## ⚠️ BASH PERMISSION HANDLING
+
+**If bash commands are denied:**
+1. **DO NOT retry more than 3 times** - You will enter an infinite loop
+2. **Write files first** - Use Write/Edit tools which don't need permission
+3. **Report the blocker** - Output: "GIT BLOCKED: Cannot create branch/commit. Files written to main."
+4. **Continue with file creation** - Complete the code work even without git
+5. **Document in session summary** - List all files created and pending git operations
+
+**Pre-launch checklist (for the orchestrating user):**
+- [ ] Create feature branches BEFORE launching agents
+- [ ] Grant bash permissions for git operations
+- [ ] Or use the Bash agent type which has default permissions
+
+---
+
 ## 🚨 CRITICAL: AGENT IDENTIFICATION
 
 **BEFORE ANY CODE GENERATION, YOU MUST:**

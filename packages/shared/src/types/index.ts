@@ -145,3 +145,202 @@ export interface SocketEvents {
 // ADD NEW TYPES BELOW THIS LINE
 // Format: // Added by AGENT_<ID> - <date>
 // ============================================================================
+
+// Added by AGENT_VOTING - 2026-01-20
+// ============================================================================
+// VOTING API TYPES
+// ============================================================================
+
+/**
+ * Request to submit a vote for a team
+ */
+export interface VotingSubmitRequest {
+  teamId: TeamId;
+  isFinalVote: boolean;
+  publicNote?: string | null;
+}
+
+/**
+ * Response after submitting a vote
+ */
+export interface VotingSubmitResponse {
+  vote: Vote;
+  isNew: boolean;
+}
+
+/**
+ * User's ranking entry for a team
+ */
+export interface VotingUserRanking {
+  teamId: TeamId;
+  teamName: string;
+  ranking: number;
+  note: string;
+  hasVoted: boolean;
+}
+
+/**
+ * Response containing user's rankings
+ */
+export interface VotingRankingsResponse {
+  rankings: VotingUserRanking[];
+  finalVoteTeamId: TeamId | null;
+}
+
+/**
+ * Request to update a private note
+ */
+export interface VotingUpdateNoteRequest {
+  teamId: TeamId;
+  note: string;
+  ranking: number;
+}
+
+/**
+ * Voting status response
+ */
+export interface VotingStatusResponse {
+  isOpen: boolean;
+}
+
+/**
+ * Vote count for a team
+ */
+export interface VotingTeamCount {
+  teamId: TeamId;
+  count: number;
+}
+
+/**
+ * Validation errors for voting
+ */
+export type VotingValidationError =
+  | 'SELF_VOTE_NOT_ALLOWED'
+  | 'TEAM_NOT_FOUND'
+  | 'TEAM_NOT_PRESENTED'
+  | 'USER_NOT_FOUND'
+  | 'ALREADY_VOTED_FINAL'
+  | 'VOTING_CLOSED';
+
+// Added by AGENT_LEADER - 2026-01-20
+// ============================================================================
+// LEADERBOARD EXTENDED TYPES
+// ============================================================================
+
+/**
+ * Socket events specific to leaderboard real-time updates
+ */
+export interface LeaderboardSocketEvents {
+  // Server -> Client
+  'leaderboard:update': (entries: LeaderboardEntry[]) => void;
+  'leaderboard:team:update': (data: { teamId: TeamId; entry: LeaderboardEntry | null }) => void;
+  'leaderboard:error': (data: { message: string }) => void;
+
+  // Client -> Server
+  'leaderboard:subscribe': () => void;
+  'leaderboard:unsubscribe': () => void;
+  'leaderboard:request': () => void;
+  'leaderboard:vote': (data: { teamId: TeamId }) => void;
+  'leaderboard:retract': (data: { teamId: TeamId }) => void;
+}
+
+/**
+ * Statistics for the leaderboard
+ */
+export interface LeaderboardStats {
+  totalTeams: number;
+  totalVotes: number;
+  teamsPresented: number;
+  topTeam: LeaderboardEntry | null;
+}
+
+/**
+ * Request to register a team for the leaderboard
+ */
+export interface LeaderboardRegisterTeamRequest {
+  teamId: TeamId;
+  teamName: string;
+  voteCount?: number;
+  hasPresented?: boolean;
+}
+
+// Added by AGENT_AUTH - 2026-01-20
+// ============================================================================
+// AUTH API TYPES
+// ============================================================================
+
+/**
+ * Login request payload
+ */
+export interface AuthLoginRequest {
+  email: string;
+  password: string;
+}
+
+/**
+ * Registration request payload
+ */
+export interface AuthRegisterRequest {
+  email: string;
+  password: string;
+  name: string;
+}
+
+/**
+ * JWT token payload structure
+ */
+export interface AuthJWTPayload {
+  userId: UserId;
+  email: string;
+  role: UserRole;
+  iat: number;
+  exp: number;
+}
+
+/**
+ * Authentication tokens response
+ */
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+/**
+ * Login/Register response
+ */
+export interface AuthResponse {
+  user: User;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+/**
+ * Token refresh request
+ */
+export interface AuthRefreshRequest {
+  refreshToken: string;
+}
+
+/**
+ * Password change request
+ */
+export interface AuthPasswordChangeRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+/**
+ * Auth session status
+ */
+export type AuthSessionStatus = 'authenticated' | 'unauthenticated' | 'loading';
+
+/**
+ * Auth context state for client-side
+ */
+export interface AuthState {
+  user: User | null;
+  status: AuthSessionStatus;
+  accessToken: string | null;
+}

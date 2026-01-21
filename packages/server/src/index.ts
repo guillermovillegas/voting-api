@@ -10,6 +10,9 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 
+// [AGENT_LEADER] Leaderboard imports
+import { leaderboardRoutes, registerLeaderboardSocketHandlers } from './modules/leaderboard';
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -38,7 +41,8 @@ app.get('/health', (_req, res) => {
 // [AGENT_TEAMS] Team routes will be registered here
 // [AGENT_VOTING] Voting routes will be registered here
 // [AGENT_PRESENT] Presentation routes will be registered here
-// [AGENT_LEADER] Leaderboard routes will be registered here
+// [AGENT_LEADER] Leaderboard routes
+app.use('/api/leaderboard', leaderboardRoutes);
 // [AGENT_ADMIN] Admin routes will be registered here
 
 // ============================================================================
@@ -50,6 +54,7 @@ io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
 
   // [AGENT_LEADER] Leaderboard events
+  registerLeaderboardSocketHandlers(io, socket);
   // [AGENT_PRESENT] Timer events
   // [AGENT_VOTING] Vote events
 

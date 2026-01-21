@@ -8,6 +8,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+// [AGENT_UI] UI Components
+import { Button, Card, CardHeader, CardBody, Input, Modal } from './components/ui';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -59,18 +62,22 @@ export function App() {
 function HomePage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900">Hackathon Voting</h1>
-        <p className="mt-4 text-gray-600">Real-time voting for hackathon presentations</p>
-        <div className="mt-8 space-x-4">
-          <a href="/login" className="px-4 py-2 bg-blue-600 text-white rounded-lg">
-            Login
-          </a>
-          <a href="/leaderboard" className="px-4 py-2 border border-gray-300 rounded-lg">
-            View Leaderboard
-          </a>
-        </div>
-      </div>
+      <Card variant="elevated" padding="lg" className="max-w-md">
+        <CardHeader title="Hackathon Voting" subtitle="Real-time voting for hackathon presentations" />
+        <CardBody>
+          <p className="text-gray-600 mb-6">
+            Welcome to the hackathon voting platform. Login to cast your votes or view the leaderboard.
+          </p>
+          <div className="space-y-3">
+            <Button variant="primary" fullWidth>
+              <a href="/login">Login</a>
+            </Button>
+            <Button variant="outline" fullWidth>
+              <a href="/leaderboard">View Leaderboard</a>
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
     </div>
   );
 }
@@ -78,13 +85,18 @@ function HomePage() {
 function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
+      <Card variant="default" padding="lg" className="text-center">
         <h1 className="text-6xl font-bold text-gray-300">404</h1>
         <p className="mt-4 text-gray-600">Page not found</p>
-        <a href="/" className="mt-4 inline-block text-blue-600 hover:underline">
-          Go home
-        </a>
-      </div>
+        <div className="mt-4">
+          <Button variant="ghost">
+            <a href="/">Go home</a>
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }
+
+// Re-export UI components for convenience
+export { Button, Card, CardHeader, CardBody, Input, Modal };
