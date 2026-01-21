@@ -1,0 +1,58 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# ============================================================================
+# PRE-PUSH HOOK - Concurrent Agent Development Safety
+# ============================================================================
+
+echo "🚀 Running pre-push checks..."
+
+REMOTE="$1"
+URL="$2"
+
+# 1. Fetch latest to check for conflicts
+echo "📡 Fetching latest from remote..."
+git fetch origin --prune 2>/dev/null
+
+# 2. Check if current branch is behind origin/main
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+BEHIND=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo "0")
+
+if [ "$BEHIND" -gt "0" ]; then
+  echo "⚠️  WARNING: Your branch is $BEHIND commit(s) behind origin/main"
+  echo "   Consider rebasing: git rebase origin/main"
+  echo "   Continuing push anyway..."
+fi
+
+# 3. Check for large files that might cause issues
+LARGE_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD | while read file; do
+  if [ -f "$file" ]; then
+    SIZE=$(wc -c < "$file" 2>/dev/null)
+    if [ "$SIZE" -gt 1000000 ]; then  # 1MB
+      echo "$file ($SIZE bytes)"
+    fi
+  fi
+done)
+
+if [ -n "$LARGE_FILES" ]; then
+  echo "⚠️  WARNING: Large files detected:"
+  echo "$LARGE_FILES"
+  echo "   Consider using Git LFS for large files."
+fi
+
+# 4. Check commit message format
+LAST_COMMIT_MSG=$(git log -1 --pretty=%B)
+if ! echo "$LAST_COMMIT_MSG" | grep -qE "^\[AGENT_[A-Z]+\]\["; then
+  echo "⚠️  WARNING: Commit message doesn't follow format:"
+  echo "   Expected: [AGENT_ID][scope] type: description"
+  echo "   Got: $LAST_COMMIT_MSG"
+fi
+
+# 5. Run tests if they exist (optional - uncomment when ready)
+# echo "🧪 Running tests..."
+# npm run test:unit || {
+#   echo "❌ Tests failed. Fix before pushing."
+#   exit 1
+# }
+
+echo "✅ Pre-push checks passed!"

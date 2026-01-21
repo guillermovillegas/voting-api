@@ -1,0 +1,53 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# ============================================================================
+# PRE-COMMIT HOOK - Concurrent Agent Development Safety
+# ============================================================================
+
+echo "🔍 Running pre-commit checks..."
+
+# 1. Check branch naming convention
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ] || [ "$BRANCH" = "production" ]; then
+  echo "❌ ERROR: Direct commits to '$BRANCH' are not allowed."
+  echo "   Create a feature branch: git checkout -b agent/<id>/<feature>"
+  exit 1
+fi
+
+# 2. Warn on protected branch commits
+if [ "$BRANCH" = "dev" ] || [ "$BRANCH" = "staging" ]; then
+  echo "⚠️  WARNING: Committing to '$BRANCH' - ensure you have coordination."
+fi
+
+# 3. Check for conflict markers in staged files
+if git diff --cached --diff-filter=ACM | grep -E "^[<>=]{7}" > /dev/null; then
+  echo "❌ ERROR: Conflict markers found in staged files!"
+  echo "   Resolve all conflicts before committing."
+  git diff --cached --diff-filter=ACM --name-only | while read file; do
+    if grep -l "^[<>=]\{7\}" "$file" 2>/dev/null; then
+      echo "   - $file"
+    fi
+  done
+  exit 1
+fi
+
+# 4. Check for TODO/FIXME with urgency
+URGENT_PATTERNS="TODO.*URGENT|FIXME.*CRITICAL|HACK.*REMOVE"
+if git diff --cached | grep -E "$URGENT_PATTERNS" > /dev/null; then
+  echo "⚠️  WARNING: Urgent TODO/FIXME found in changes."
+  echo "   Consider addressing before commit or add to TASKS.md"
+fi
+
+# 5. Check LOCKS.md for stale locks (expired > 1 hour ago)
+if [ -f "LOCKS.md" ]; then
+  CURRENT_TIME=$(date +%s)
+  # This is a simplified check - agents should manually verify
+  echo "📋 Remember to check LOCKS.md for any locks you need to release."
+fi
+
+# 6. Run type check (optional - uncomment if packages installed)
+# echo "📝 Running typecheck..."
+# npm run typecheck || exit 1
+
+echo "✅ Pre-commit checks passed!"
