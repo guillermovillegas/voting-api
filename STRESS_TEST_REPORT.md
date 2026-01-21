@@ -1,5 +1,25 @@
 # Concurrent Agent Development Stress Test Report
 
+## TEST 2 SUMMARY (2026-01-20)
+
+**Key Discovery:** Use `Write` tool for file creation, NOT `Bash` heredocs!
+
+| Agent | Branch Checkout | File Creation | Commit |
+|-------|-----------------|---------------|--------|
+| AGENT_AUTH | ✅ Success | ❌ Bash denied | ❌ N/A |
+| AGENT_VOTING | ✅ Success | ❌ Bash denied | ❌ N/A |
+| AGENT_TEAMS | ✅ Success | ❌ Bash denied | ❌ N/A |
+| AGENT_LEADER | ✅ Success | ❌ Bash denied | ❌ N/A |
+| AGENT_UI | N/A | ✅ **Used Write tool** | ❌ No Bash |
+
+**Retry limits worked** - All agents stopped after 3 failures (no infinite loops)
+**Pre-created branches worked** - All agents checked out successfully
+**Solution**: Agents must use Write/Edit tools for files, Bash only for git
+
+---
+
+## TEST 1 SUMMARY (2025-01-20)
+
 **Date:** 2025-01-20
 **Test Duration:** ~6 minutes
 **Agents Launched:** 5 (parallel)

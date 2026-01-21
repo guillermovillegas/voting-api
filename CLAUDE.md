@@ -6,35 +6,57 @@ This project is designed to stress-test multiple AI agents working concurrently 
 
 ---
 
-## 🚨 STRESS TEST FINDINGS (2025-01-20)
+## 🚨 STRESS TEST FINDINGS (2026-01-20)
 
-### Critical Issues Discovered
+### Test 1 Issues
 1. **Bash permissions block git operations** - Subagents can't run git without approval
-2. **Infinite retry loops** - Agents retry failing commands indefinitely
+2. **Infinite retry loops** - Agents retry failing commands indefinitely (100+ times)
 3. **No branch isolation** - Without git, all changes go to main
 4. **Protected file violations** - Time pressure causes agents to ignore rules
 
+### Test 2 Findings (After Mitigations)
+| Component | Result |
+|-----------|--------|
+| Pre-created branches | ✅ Agents checkout successfully |
+| Simple bash (mkdir, git checkout) | ✅ Works |
+| Heredoc file creation (cat > file) | ❌ Still denied |
+| Retry limits (3x max) | ✅ Agents stopped correctly |
+| **Write tool for files** | ✅ **SUCCESS - Use this instead of Bash!** |
+
+### ✅ SOLUTION DISCOVERED
+**Use Write/Edit tools for file creation, NOT Bash heredocs!**
+- `Write` tool works for all agent types without special permissions
+- `Bash` is only needed for git operations (checkout, commit, push)
+- Agents using `Write` tool (like AGENT_UI) completed all file creation successfully
+
 ### Required Mitigations
 - **Pre-create branches** before launching agents
-- **Grant bash permissions** explicitly for git operations
-- **Add retry limits** - Max 3 attempts, then ask for help
+- **Use Write tool** for file creation (not bash cat/heredoc)
+- **Add retry limits** - Max 3 attempts, then stop and report
 - **Enforce file ownership** - Block writes outside assigned modules
 
 ---
 
-## ⚠️ BASH PERMISSION HANDLING
+## ⚠️ CRITICAL: FILE CREATION METHOD
 
-**If bash commands are denied:**
-1. **DO NOT retry more than 3 times** - You will enter an infinite loop
-2. **Write files first** - Use Write/Edit tools which don't need permission
-3. **Report the blocker** - Output: "GIT BLOCKED: Cannot create branch/commit. Files written to main."
-4. **Continue with file creation** - Complete the code work even without git
+**ALWAYS use Write/Edit tools for creating files - NEVER use Bash heredocs!**
+
+```
+❌ WRONG: cat > file.ts << 'EOF' ... EOF  (will be denied)
+✅ RIGHT: Use Write tool with file_path and content parameters
+```
+
+### If Bash commands are denied:
+1. **DO NOT retry more than 3 times** - Stop and report the failure
+2. **Use Write/Edit tools** - These work without Bash permissions
+3. **Report the blocker** - Output: "GIT BLOCKED: Cannot create branch/commit."
+4. **Continue with file creation** - Use Write tool to complete code work
 5. **Document in session summary** - List all files created and pending git operations
 
-**Pre-launch checklist (for the orchestrating user):**
+### Pre-launch checklist (for the orchestrating user):
 - [ ] Create feature branches BEFORE launching agents
-- [ ] Grant bash permissions for git operations
-- [ ] Or use the Bash agent type which has default permissions
+- [ ] Instruct agents to use Write tool for files (not Bash)
+- [ ] Grant Bash permissions ONLY for git commands (checkout, add, commit)
 
 ---
 
