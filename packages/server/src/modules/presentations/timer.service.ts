@@ -6,7 +6,7 @@
  * OWNERSHIP: AGENT_PRESENT
  */
 
-import type { TimerState, ApiResponse } from '@priv/types';
+import type { TimerState, ApiResponse } from '@voting/shared';
 import * as timerQueries from './timer.queries';
 import type { TimerStateRow } from '../../core/db/types';
 

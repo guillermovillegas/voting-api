@@ -12,7 +12,7 @@ import type {
   UserId,
   TeamId,
   ApiResponse,
-} from '@priv/types';
+} from '@voting/shared';
 import {
   TEAM_MIN_SIZE,
   TEAM_MAX_SIZE,
@@ -143,7 +143,6 @@ export class TeamsService {
     try {
       const teamRow = await teamsQueries.createTeam({
         name: input.name,
-        presentationOrder: input.presentationOrder,
       });
 
       // Assign initial members if provided

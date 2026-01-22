@@ -14,7 +14,7 @@ import {
   removeMembersSchema,
   teamIdSchema,
 } from './teams.validation';
-import type { TeamId, UserId } from '@priv/types';
+import type { TeamId, UserId } from '@voting/shared';
 import { requireAuth, requireAdmin, type AuthenticatedRequest } from '../auth/auth.middleware';
 import { generalRateLimiter } from '../../core/api/rateLimit';
 import { validateBody, validateParams, teamIdParamSchema, userIdParamSchema } from '../../core/api/validation';

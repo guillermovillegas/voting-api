@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import type { User, UserId } from '@priv/types';
+import type { User, UserId } from '@voting/shared';
 
 // Password validation schema
 export const passwordSchema = z

@@ -8,7 +8,7 @@
 
 import type { Server, Socket } from 'socket.io';
 import * as timerService from './timer.service';
-import type { TimerState } from '@priv/types';
+import type { TimerState } from '@voting/shared';
 
 // ============================================================================
 // SOCKET EVENT HANDLERS

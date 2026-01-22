@@ -8,7 +8,7 @@
 
 import type { Server, Socket } from 'socket.io';
 import * as presentationsService from './presentations.service';
-import type { Presentation } from '@priv/types';
+import type { Presentation } from '@voting/shared';
 
 // ============================================================================
 // SOCKET EVENT HANDLERS

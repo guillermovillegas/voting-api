@@ -6,12 +6,12 @@
  * OWNERSHIP: AGENT_ADMIN
  */
 
-import type { ApiResponse } from '@priv/types';
+import type { ApiResponse } from '@voting/shared';
 import * as adminQueries from './admin.queries';
 import * as teamsQueries from '../teams/teams.queries';
 import * as authQueries from '../auth/auth.queries';
 import type { UserRow, TeamRow } from '../../core/db/types';
-import type { User, Team } from '@priv/types';
+import type { User, Team } from '@voting/shared';
 import { transaction } from '../../core/db/client';
 
 // ============================================================================

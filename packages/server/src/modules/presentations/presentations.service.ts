@@ -6,7 +6,7 @@
  * OWNERSHIP: AGENT_PRESENT
  */
 
-import type { Presentation, ApiResponse } from '@priv/types';
+import type { Presentation, ApiResponse } from '@voting/shared';
 import * as presentationsQueries from './presentations.queries';
 import * as teamsQueries from '../teams/teams.queries';
 import type { PresentationRow } from '../../core/db/types';

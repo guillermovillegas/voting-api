@@ -5,7 +5,7 @@
 
 import type { Request, Response, NextFunction } from 'express';
 import { verifyToken, type JWTPayload } from './auth.service';
-import type { UserRole } from '@priv/types';
+import type { UserRole } from '@voting/shared';
 
 // Extend Express Request type to include authenticated user
 declare global {

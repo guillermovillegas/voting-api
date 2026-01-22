@@ -8,7 +8,7 @@
 import type { Server, Socket } from 'socket.io';
 import { z } from 'zod';
 import { leaderboardService } from './leaderboard.service';
-import type { LeaderboardEntry, TeamId } from '@priv/types';
+import type { LeaderboardEntry, TeamId } from '@voting/shared';
 
 // Event names for leaderboard socket communication
 export const LEADERBOARD_EVENTS = {
@@ -51,10 +51,10 @@ function broadcastTeamUpdate(io: Server, teamId: TeamId, entry: LeaderboardEntry
  */
 export function registerLeaderboardSocketHandlers(io: Server, socket: Socket): void {
   // Subscribe to leaderboard updates
-  socket.on(LEADERBOARD_EVENTS.SUBSCRIBE, () => {
+  socket.on(LEADERBOARD_EVENTS.SUBSCRIBE, async () => {
     socket.join(LeaderboardRoom);
     // Send current leaderboard state immediately
-    const leaderboard = leaderboardService.getLeaderboard();
+    const leaderboard = await leaderboardService.getLeaderboard();
     socket.emit(LEADERBOARD_EVENTS.UPDATE, leaderboard);
     console.log(`[Leaderboard] Client ${socket.id} subscribed`);
   });
@@ -66,16 +66,16 @@ export function registerLeaderboardSocketHandlers(io: Server, socket: Socket): v
   });
 
   // Request current leaderboard state
-  socket.on(LEADERBOARD_EVENTS.REQUEST_UPDATE, () => {
-    const leaderboard = leaderboardService.getLeaderboard();
+  socket.on(LEADERBOARD_EVENTS.REQUEST_UPDATE, async () => {
+    const leaderboard = await leaderboardService.getLeaderboard();
     socket.emit(LEADERBOARD_EVENTS.UPDATE, leaderboard);
   });
 
   // Handle vote submission via socket
-  socket.on(LEADERBOARD_EVENTS.VOTE, (data: unknown) => {
+  socket.on(LEADERBOARD_EVENTS.VOTE, async (data: unknown) => {
     try {
       const { teamId } = VoteEventSchema.parse(data);
-      const leaderboard = leaderboardService.incrementVote(teamId);
+      const leaderboard = await leaderboardService.incrementVote(teamId);
       broadcastLeaderboardUpdate(io, leaderboard);
       console.log(`[Leaderboard] Vote recorded for team ${teamId}`);
     } catch (error) {
@@ -86,10 +86,10 @@ export function registerLeaderboardSocketHandlers(io: Server, socket: Socket): v
   });
 
   // Handle vote retraction via socket
-  socket.on(LEADERBOARD_EVENTS.RETRACT_VOTE, (data: unknown) => {
+  socket.on(LEADERBOARD_EVENTS.RETRACT_VOTE, async (data: unknown) => {
     try {
       const { teamId } = VoteEventSchema.parse(data);
-      const leaderboard = leaderboardService.decrementVote(teamId);
+      const leaderboard = await leaderboardService.decrementVote(teamId);
       broadcastLeaderboardUpdate(io, leaderboard);
       console.log(`[Leaderboard] Vote retracted for team ${teamId}`);
     } catch (error) {
@@ -103,16 +103,16 @@ export function registerLeaderboardSocketHandlers(io: Server, socket: Socket): v
 /**
  * Notify all clients of a leaderboard change (call from service layer)
  */
-export function notifyLeaderboardChange(io: Server): void {
-  const leaderboard = leaderboardService.getLeaderboard();
+export async function notifyLeaderboardChange(io: Server): Promise<void> {
+  const leaderboard = await leaderboardService.getLeaderboard();
   broadcastLeaderboardUpdate(io, leaderboard);
 }
 
 /**
  * Notify all clients of a specific team change
  */
-export function notifyTeamChange(io: Server, teamId: TeamId): void {
-  const entry = leaderboardService.getTeamEntry(teamId);
+export async function notifyTeamChange(io: Server, teamId: TeamId): Promise<void> {
+  const entry = await leaderboardService.getTeamEntry(teamId);
   broadcastTeamUpdate(io, teamId, entry);
 }
 

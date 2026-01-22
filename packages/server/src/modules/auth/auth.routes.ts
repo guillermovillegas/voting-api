@@ -16,7 +16,7 @@ import {
   verifyToken,
 } from './auth.service';
 import { requireAuth, type AuthenticatedRequest } from './auth.middleware';
-import type { User } from '@priv/types';
+import type { User } from '@voting/shared';
 import * as authQueries from './auth.queries';
 import type { UserRow } from '../../core/db/types';
 import { authRateLimiter, strictRateLimiter } from '../../core/api/rateLimit';

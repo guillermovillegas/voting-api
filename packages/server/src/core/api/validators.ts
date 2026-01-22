@@ -53,6 +53,13 @@ export const presentationIdParamSchema = z.object({
   id: uuidSchema,
 });
 
+/**
+ * Generic UUID parameter (id)
+ */
+export const uuidParamSchema = z.object({
+  id: uuidSchema,
+});
+
 // ============================================================================
 // VALIDATION HELPERS
 // ============================================================================

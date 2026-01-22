@@ -69,3 +69,4 @@ credentials.json
 
 # Codacy local tooling
 .codacy/
+.vercel

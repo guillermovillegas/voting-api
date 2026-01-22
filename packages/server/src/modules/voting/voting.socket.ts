@@ -7,7 +7,7 @@
  */
 
 import type { Server } from 'socket.io';
-import type { Vote, LeaderboardEntry } from '@priv/types';
+import type { Vote, LeaderboardEntry } from '@voting/shared';
 
 // ============================================================================
 // SOCKET EVENT BROADCASTERS

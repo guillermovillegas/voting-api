@@ -77,34 +77,10 @@ export function validateParams<T>(schema: ZodSchema<T>) {
   };
 }
 
-// ============================================================================
-// COMMON VALIDATION SCHEMAS
-// ============================================================================
-
-/**
- * UUID parameter validation
- */
-export const uuidParamSchema = z.object({
-  id: z.string().uuid('Invalid UUID format'),
-});
-
-/**
- * Team ID parameter validation
- */
-export const teamIdParamSchema = z.object({
-  teamId: z.string().uuid('Invalid team ID format'),
-});
-
-/**
- * User ID parameter validation
- */
-export const userIdParamSchema = z.object({
-  userId: z.string().uuid('Invalid user ID format'),
-});
-
-/**
- * Presentation ID parameter validation
- */
-export const presentationIdParamSchema = z.object({
-  id: z.string().uuid('Invalid presentation ID format'),
-});
+// Re-export common validation schemas from validators
+export {
+  teamIdParamSchema,
+  userIdParamSchema,
+  presentationIdParamSchema,
+  uuidParamSchema,
+} from './validators';

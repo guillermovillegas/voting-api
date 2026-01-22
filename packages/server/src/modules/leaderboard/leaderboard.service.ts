@@ -5,7 +5,7 @@
  * Handles ranking calculation and tie handling for the leaderboard
  */
 
-import type { LeaderboardEntry, TeamId } from '@priv/types';
+import type { LeaderboardEntry, TeamId } from '@voting/shared';
 import * as leaderboardQueries from './leaderboard.queries';
 import type { LeaderboardEntryRow } from './leaderboard.queries';
 

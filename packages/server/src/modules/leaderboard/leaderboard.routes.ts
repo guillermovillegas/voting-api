@@ -7,7 +7,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import { leaderboardService } from './leaderboard.service';
-import type { LeaderboardEntry } from '@priv/types';
+import type { LeaderboardEntry } from '@voting/shared';
 import { generalRateLimiter } from '../../core/api/rateLimit';
 import { validateParams, teamIdParamSchema } from '../../core/api/validation';
 import { successResponse } from '../../core/api/response';

@@ -6,7 +6,7 @@
  * OWNERSHIP: AGENT_INFRA
  */
 
-import type { Request } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 
 // ============================================================================
 // AUDIT LOG TYPES
