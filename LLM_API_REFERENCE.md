@@ -49,11 +49,38 @@ socket.on('leaderboard:update', (data) => console.log(data));
 ```
 API_URL: https://voting-api-lcvw.onrender.com
 WEBSOCKET_URL: wss://voting-api-lcvw.onrender.com
+ROOT_INFO: https://voting-api-lcvw.onrender.com/
 HEALTH_CHECK: https://voting-api-lcvw.onrender.com/health
 API_DOCS: https://voting-api-lcvw.onrender.com/api/docs
 ```
 
 ### Quick Start Examples
+
+**API Info (Root Endpoint):**
+```bash
+curl https://voting-api-lcvw.onrender.com/
+```
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "name": "Hackathon Voting API",
+    "version": "1.0.0",
+    "description": "REST API for hackathon voting with real-time WebSocket support",
+    "documentation": "/api/docs",
+    "health": "/health",
+    "endpoints": {
+      "auth": "/api/v1/auth",
+      "teams": "/api/v1/teams",
+      "votes": "/api/v1/votes",
+      "leaderboard": "/api/v1/leaderboard",
+      "presentations": "/api/v1/presentations",
+      "timer": "/api/v1/timer"
+    }
+  }
+}
+```
 
 **Health Check:**
 ```bash
@@ -2777,6 +2804,7 @@ All endpoints below have been tested against the live deployment:
 
 | Endpoint | Method | Auth | Status |
 |----------|--------|------|--------|
+| `/` | GET | No | ✅ Verified |
 | `/health` | GET | No | ✅ Verified |
 | `/api/v1/auth/register` | POST | No | ✅ Verified |
 | `/api/v1/auth/login` | POST | No | ✅ Verified |
