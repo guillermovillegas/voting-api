@@ -16,9 +16,9 @@ declare global {
   }
 }
 
-export interface AuthenticatedRequest extends Request {
+export type AuthenticatedRequest = Request & {
   user: JWTPayload;
-}
+};
 
 /**
  * Extract bearer token from Authorization header
