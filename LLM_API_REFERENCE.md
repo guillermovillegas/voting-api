@@ -4,10 +4,57 @@ This document provides complete API specifications for LLM-assisted integration 
 
 ---
 
+## Live Deployment
+
+```
+API_URL: https://voting-api-lcvw.onrender.com
+WEBSOCKET_URL: wss://voting-api-lcvw.onrender.com
+HEALTH_CHECK: https://voting-api-lcvw.onrender.com/health
+API_DOCS: https://voting-api-lcvw.onrender.com/api/docs
+```
+
+### Quick Start Examples
+
+**Health Check:**
+```bash
+curl https://voting-api-lcvw.onrender.com/health
+```
+Response:
+```json
+{"success":true,"data":{"status":"ok","timestamp":"2026-01-22T08:49:58.732Z"},"timestamp":"2026-01-22T08:49:58.732Z"}
+```
+
+**Register User:**
+```bash
+curl -X POST https://voting-api-lcvw.onrender.com/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"SecurePass1#","name":"User Name"}'
+```
+
+**Login:**
+```bash
+curl -X POST https://voting-api-lcvw.onrender.com/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"SecurePass1#"}'
+```
+
+**Authenticated Request:**
+```bash
+curl https://voting-api-lcvw.onrender.com/api/v1/teams \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Get Leaderboard (No Auth Required):**
+```bash
+curl https://voting-api-lcvw.onrender.com/api/v1/leaderboard
+```
+
+---
+
 ## Base Configuration
 
 ```
-BASE_URL: /api/v1
+BASE_URL: https://voting-api-lcvw.onrender.com/api/v1
 CONTENT_TYPE: application/json
 AUTHENTICATION: Bearer Token (JWT)
 ```
@@ -96,6 +143,19 @@ Authorization: Bearer <access_token>
 | Admin | 200 requests | 15 minutes |
 
 Rate limit headers returned: `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`
+
+**Rate Limit Response (429):**
+```json
+{
+  "success": false,
+  "error": "Too many authentication attempts, please try again later",
+  "code": "RATE_LIMIT_EXCEEDED",
+  "status": 429,
+  "timestamp": "2026-01-22T08:52:02.845Z"
+}
+```
+
+**Important:** Authentication endpoints are strictly limited to 5 requests per 15 minutes. Store tokens and reuse them rather than re-authenticating frequently.
 
 ---
 
@@ -1299,8 +1359,18 @@ Reset timer. **Admin only.**
 ### Connection
 
 ```javascript
-const socket = io(SERVER_URL, {
+import { io } from 'socket.io-client';
+
+const socket = io('https://voting-api-lcvw.onrender.com', {
   transports: ['websocket', 'polling']
+});
+
+socket.on('connect', () => {
+  console.log('Connected:', socket.id);
+});
+
+socket.on('disconnect', () => {
+  console.log('Disconnected');
 });
 ```
 
