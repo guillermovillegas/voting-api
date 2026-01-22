@@ -7,11 +7,12 @@ services:
     runtime: node
     region: oregon
     plan: free
-    nodeVersion: 20.11.0
-    buildCommand: npm install && npm run build -w @voting/shared && npm run build -w @voting/server
+    buildCommand: npm run build -w @voting/shared && npm run build -w @voting/server
     startCommand: npm run start -w @voting/server
     healthCheckPath: /health
     envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
       - key: NODE_ENV
         value: production
       - key: PORT
