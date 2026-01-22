@@ -1,0 +1,25 @@
+# Render Blueprint
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: voting-api
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build -w @voting/shared && npm run build -w @voting/server
+    startCommand: npm run start -w @voting/server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_SSL
+        value: true
+      - key: CLIENT_URL
+        sync: false
