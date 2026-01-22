@@ -66,3 +66,6 @@ credentials.json
 
 # Cursor AI rules (optional tools)
 .cursor/rules/codacy.mdc
+
+# Codacy local tooling
+.codacy/

@@ -5,150 +5,112 @@
  * Handles ranking calculation and tie handling for the leaderboard
  */
 
-import { z } from 'zod';
 import type { LeaderboardEntry, TeamId } from '@priv/types';
+import * as leaderboardQueries from './leaderboard.queries';
+import type { LeaderboardEntryRow } from './leaderboard.queries';
 
-// Validation schemas
-const TeamVoteDataSchema = z.object({
-  teamId: z.string(),
-  teamName: z.string(),
-  voteCount: z.number().int().min(0),
-  hasPresented: z.boolean(),
-});
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
-type TeamVoteData = z.infer<typeof TeamVoteDataSchema>;
-
-// In-memory store for demo purposes (would use database in production)
-const teamVotes = new Map<TeamId, TeamVoteData>();
-
-/**
- * Calculate rankings with proper tie handling
- * Teams with the same vote count share the same rank
- * Next rank accounts for ties (e.g., 1, 1, 3 not 1, 1, 2)
- */
-function calculateRankings(teams: TeamVoteData[]): LeaderboardEntry[] {
-  // Sort by vote count descending
-  const sorted = [...teams].sort((a, b) => b.voteCount - a.voteCount);
-
-  const entries: LeaderboardEntry[] = [];
-  let currentRank = 1;
-  let previousVoteCount: number | null = null;
-  let teamsAtCurrentRank = 0;
-
-  for (let i = 0; i < sorted.length; i++) {
-    const team = sorted[i];
-    if (team === undefined) continue;
-
-    if (previousVoteCount !== null && team.voteCount < previousVoteCount) {
-      // Vote count changed, update rank
-      currentRank += teamsAtCurrentRank;
-      teamsAtCurrentRank = 1;
-    } else if (previousVoteCount === null) {
-      teamsAtCurrentRank = 1;
-    } else {
-      // Same vote count, same rank (tie)
-      teamsAtCurrentRank++;
-    }
-
-    entries.push({
-      teamId: team.teamId,
-      teamName: team.teamName,
-      voteCount: team.voteCount,
-      rank: currentRank,
-      hasPresented: team.hasPresented,
-    });
-
-    previousVoteCount = team.voteCount;
-  }
-
-  return entries;
+function rowToLeaderboardEntry(row: LeaderboardEntryRow): LeaderboardEntry {
+  return {
+    teamId: row.team_id,
+    teamName: row.team_name,
+    voteCount: row.vote_count,
+    rank: row.rank,
+    hasPresented: row.has_presented,
+  };
 }
+
+// ============================================================================
+// SERVICE FUNCTIONS
+// ============================================================================
 
 /**
  * Get the current leaderboard with rankings
+ * Rankings are calculated in the database using DENSE_RANK for proper tie handling
  */
-export function getLeaderboard(): LeaderboardEntry[] {
-  const teams = Array.from(teamVotes.values());
-  return calculateRankings(teams);
+export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
+  const entries = await leaderboardQueries.getLeaderboardEntries();
+  return entries.map(rowToLeaderboardEntry);
 }
 
 /**
  * Register or update a team's data
+ * Note: Teams are managed through the teams service, this is for compatibility
  */
-export function registerTeam(data: TeamVoteData): void {
-  const validated = TeamVoteDataSchema.parse(data);
-  teamVotes.set(validated.teamId, validated);
+export async function registerTeam(_data: {
+  teamId: string;
+  teamName: string;
+  voteCount?: number;
+  hasPresented?: boolean;
+}): Promise<void> {
+  // Teams are managed through teams service
+  // This function is kept for compatibility but doesn't need to do anything
+  // as teams are already in the database
 }
 
 /**
  * Increment vote count for a team
+ * Note: Votes are managed through voting service, this just returns updated leaderboard
  */
-export function incrementVote(teamId: TeamId): LeaderboardEntry[] {
-  const team = teamVotes.get(teamId);
-  if (!team) {
-    throw new Error(`Team ${teamId} not found`);
-  }
-
-  team.voteCount++;
-  teamVotes.set(teamId, team);
-
+export async function incrementVote(_teamId: TeamId): Promise<LeaderboardEntry[]> {
+  // Vote count is calculated from database, just return updated leaderboard
   return getLeaderboard();
 }
 
 /**
  * Decrement vote count for a team (e.g., vote retraction)
+ * Note: Votes are managed through voting service, this just returns updated leaderboard
  */
-export function decrementVote(teamId: TeamId): LeaderboardEntry[] {
-  const team = teamVotes.get(teamId);
-  if (!team) {
-    throw new Error(`Team ${teamId} not found`);
-  }
-
-  if (team.voteCount > 0) {
-    team.voteCount--;
-    teamVotes.set(teamId, team);
-  }
-
+export async function decrementVote(_teamId: TeamId): Promise<LeaderboardEntry[]> {
+  // Vote count is calculated from database, just return updated leaderboard
   return getLeaderboard();
 }
 
 /**
  * Update team's presentation status
+ * Note: Teams are managed through teams service
  */
-export function markTeamAsPresented(teamId: TeamId): LeaderboardEntry[] {
-  const team = teamVotes.get(teamId);
-  if (!team) {
-    throw new Error(`Team ${teamId} not found`);
-  }
-
-  team.hasPresented = true;
-  teamVotes.set(teamId, team);
-
+export async function markTeamAsPresented(_teamId: TeamId): Promise<LeaderboardEntry[]> {
+  // Teams are managed through teams service
+  // This function is kept for compatibility but the actual update should be done via teams service
   return getLeaderboard();
 }
 
 /**
  * Reset all votes (for new voting session)
+ * Note: This would require deleting votes from database - use with caution
  */
-export function resetVotes(): void {
-  for (const [teamId, team] of teamVotes) {
-    teamVotes.set(teamId, { ...team, voteCount: 0 });
-  }
+export async function resetVotes(): Promise<void> {
+  // This would require a database operation to delete all votes
+  // For now, this is a no-op as votes should be managed through proper admin functions
+  console.warn('resetVotes called - votes should be managed through proper admin functions');
 }
 
 /**
  * Clear all team data
+ * Note: Teams are managed through teams service
  */
-export function clearAllTeams(): void {
-  teamVotes.clear();
+export async function clearAllTeams(): Promise<void> {
+  // Teams are managed through teams service
+  // This function is kept for compatibility but doesn't need to do anything
 }
 
 /**
  * Get a single team's entry
  */
-export function getTeamEntry(teamId: TeamId): LeaderboardEntry | null {
-  const leaderboard = getLeaderboard();
-  return leaderboard.find((entry) => entry.teamId === teamId) ?? null;
+export async function getTeamEntry(teamId: TeamId): Promise<LeaderboardEntry | null> {
+  const entry = await leaderboardQueries.getTeamLeaderboardEntry(teamId);
+  return entry ? rowToLeaderboardEntry(entry) : null;
+}
+
+/**
+ * Get leaderboard statistics
+ */
+export async function getLeaderboardStats() {
+  return await leaderboardQueries.getLeaderboardStats();
 }
 
 export const leaderboardService = {
@@ -160,4 +122,5 @@ export const leaderboardService = {
   resetVotes,
   clearAllTeams,
   getTeamEntry,
+  getLeaderboardStats,
 };

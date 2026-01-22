@@ -344,3 +344,61 @@ export interface AuthState {
   status: AuthSessionStatus;
   accessToken: string | null;
 }
+
+// Added by AGENT_TEAMS - 2026-01-20
+// ============================================================================
+// TEAM API TYPES
+// ============================================================================
+
+/**
+ * Request to create a new team
+ */
+export interface CreateTeamRequest {
+  name: string;
+  memberIds?: UserId[];
+}
+
+/**
+ * Request to update an existing team
+ */
+export interface UpdateTeamRequest {
+  name?: string;
+  presentationOrder?: number | null;
+  hasPresented?: boolean;
+}
+
+/**
+ * Request to add or remove team members
+ */
+export interface TeamMembersRequest {
+  memberIds: UserId[];
+}
+
+/**
+ * Team size constraint configuration
+ */
+export interface TeamSizeConstraints {
+  minSize: number;
+  maxSize: number;
+}
+
+/**
+ * Default team size constraints (3-6 members)
+ */
+export const TEAM_SIZE_CONSTRAINTS: TeamSizeConstraints = {
+  minSize: 3,
+  maxSize: 6,
+};
+
+/**
+ * Team validation error types
+ */
+export type TeamValidationError =
+  | 'TEAM_NOT_FOUND'
+  | 'TEAM_NAME_TOO_SHORT'
+  | 'TEAM_NAME_TOO_LONG'
+  | 'TEAM_TOO_SMALL'
+  | 'TEAM_TOO_LARGE'
+  | 'USER_ALREADY_IN_TEAM'
+  | 'USER_NOT_IN_TEAM'
+  | 'INVALID_MEMBER_ID';

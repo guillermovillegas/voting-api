@@ -6,216 +6,90 @@
  */
 
 import { Router, type Request, type Response } from 'express';
-import { z } from 'zod';
 import { leaderboardService } from './leaderboard.service';
-import type { ApiResponse, LeaderboardEntry } from '@priv/types';
+import type { LeaderboardEntry } from '@priv/types';
+import { generalRateLimiter } from '../../core/api/rateLimit';
+import { validateParams, teamIdParamSchema } from '../../core/api/validation';
+import { successResponse } from '../../core/api/response';
+import { NotFoundError } from '../../core/api/errors';
 
 const router = Router();
 
-// Validation schemas
-const TeamIdParamSchema = z.object({
-  teamId: z.string().min(1),
-});
-
-const RegisterTeamBodySchema = z.object({
-  teamId: z.string().min(1),
-  teamName: z.string().min(1).max(100),
-  voteCount: z.number().int().min(0).default(0),
-  hasPresented: z.boolean().default(false),
-});
+// ============================================================================
+// ROUTES
+// ============================================================================
 
 /**
- * GET /api/leaderboard
+ * GET /api/v1/leaderboard
  * Get the current leaderboard with rankings
+ * Uses database queries for real-time calculation
  */
-router.get('/', (_req: Request, res: Response<ApiResponse<LeaderboardEntry[]>>) => {
+router.get('/', generalRateLimiter, async (req: Request, res: Response): Promise<void> => {
   try {
-    const leaderboard = leaderboardService.getLeaderboard();
-    res.json({
-      success: true,
-      data: leaderboard,
-    });
+    const leaderboard = await leaderboardService.getLeaderboard();
+    res.json(successResponse(leaderboard));
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch leaderboard';
+    console.error('Get leaderboard error:', error);
     res.status(500).json({
       success: false,
-      error: message,
+      error: 'Failed to fetch leaderboard',
+      code: 'INTERNAL_SERVER_ERROR',
+      timestamp: new Date().toISOString(),
     });
   }
 });
 
 /**
- * GET /api/leaderboard/:teamId
+ * GET /api/v1/leaderboard/stats
+ * Get leaderboard statistics
+ */
+router.get('/stats', generalRateLimiter, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const stats = await leaderboardService.getLeaderboardStats();
+    res.json(successResponse(stats));
+  } catch (error) {
+    console.error('Get leaderboard stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch leaderboard statistics',
+      code: 'INTERNAL_SERVER_ERROR',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+/**
+ * GET /api/v1/leaderboard/:teamId
  * Get a specific team's leaderboard entry
  */
-router.get('/:teamId', (req: Request, res: Response<ApiResponse<LeaderboardEntry>>) => {
-  try {
-    const { teamId } = TeamIdParamSchema.parse(req.params);
-    const entry = leaderboardService.getTeamEntry(teamId);
+router.get(
+  '/:teamId',
+  generalRateLimiter,
+  validateParams(teamIdParamSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { teamId } = req.params;
+      const entry = await leaderboardService.getTeamEntry(teamId);
 
-    if (!entry) {
-      res.status(404).json({
+      if (!entry) {
+        throw new NotFoundError('Team', teamId);
+      }
+
+      res.json(successResponse(entry));
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        res.status(error.statusCode).json(error.toProblemDetails());
+        return;
+      }
+      console.error('Get team entry error:', error);
+      res.status(500).json({
         success: false,
-        error: `Team ${teamId} not found`,
+        error: 'Failed to fetch team entry',
+        code: 'INTERNAL_SERVER_ERROR',
+        timestamp: new Date().toISOString(),
       });
-      return;
     }
-
-    res.json({
-      success: true,
-      data: entry,
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid team ID',
-      });
-      return;
-    }
-    const message = error instanceof Error ? error.message : 'Failed to fetch team entry';
-    res.status(500).json({
-      success: false,
-      error: message,
-    });
   }
-});
-
-/**
- * POST /api/leaderboard/teams
- * Register a new team for the leaderboard
- */
-router.post('/teams', (req: Request, res: Response<ApiResponse<LeaderboardEntry[]>>) => {
-  try {
-    const data = RegisterTeamBodySchema.parse(req.body);
-    leaderboardService.registerTeam(data);
-    const leaderboard = leaderboardService.getLeaderboard();
-
-    res.status(201).json({
-      success: true,
-      data: leaderboard,
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({
-        success: false,
-        error: `Validation error: ${error.errors.map((e) => e.message).join(', ')}`,
-      });
-      return;
-    }
-    const message = error instanceof Error ? error.message : 'Failed to register team';
-    res.status(500).json({
-      success: false,
-      error: message,
-    });
-  }
-});
-
-/**
- * POST /api/leaderboard/:teamId/vote
- * Increment vote count for a team
- */
-router.post('/:teamId/vote', (req: Request, res: Response<ApiResponse<LeaderboardEntry[]>>) => {
-  try {
-    const { teamId } = TeamIdParamSchema.parse(req.params);
-    const leaderboard = leaderboardService.incrementVote(teamId);
-
-    res.json({
-      success: true,
-      data: leaderboard,
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid team ID',
-      });
-      return;
-    }
-    const message = error instanceof Error ? error.message : 'Failed to record vote';
-    res.status(500).json({
-      success: false,
-      error: message,
-    });
-  }
-});
-
-/**
- * DELETE /api/leaderboard/:teamId/vote
- * Decrement vote count for a team (vote retraction)
- */
-router.delete('/:teamId/vote', (req: Request, res: Response<ApiResponse<LeaderboardEntry[]>>) => {
-  try {
-    const { teamId } = TeamIdParamSchema.parse(req.params);
-    const leaderboard = leaderboardService.decrementVote(teamId);
-
-    res.json({
-      success: true,
-      data: leaderboard,
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid team ID',
-      });
-      return;
-    }
-    const message = error instanceof Error ? error.message : 'Failed to retract vote';
-    res.status(500).json({
-      success: false,
-      error: message,
-    });
-  }
-});
-
-/**
- * POST /api/leaderboard/:teamId/presented
- * Mark a team as having presented
- */
-router.post('/:teamId/presented', (req: Request, res: Response<ApiResponse<LeaderboardEntry[]>>) => {
-  try {
-    const { teamId } = TeamIdParamSchema.parse(req.params);
-    const leaderboard = leaderboardService.markTeamAsPresented(teamId);
-
-    res.json({
-      success: true,
-      data: leaderboard,
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid team ID',
-      });
-      return;
-    }
-    const message = error instanceof Error ? error.message : 'Failed to update team status';
-    res.status(500).json({
-      success: false,
-      error: message,
-    });
-  }
-});
-
-/**
- * POST /api/leaderboard/reset
- * Reset all vote counts (admin only in production)
- */
-router.post('/reset', (_req: Request, res: Response<ApiResponse<null>>) => {
-  try {
-    leaderboardService.resetVotes();
-    res.json({
-      success: true,
-      data: null,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to reset votes';
-    res.status(500).json({
-      success: false,
-      error: message,
-    });
-  }
-});
+);
 
 export const leaderboardRoutes = router;

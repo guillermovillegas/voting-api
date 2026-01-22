@@ -17,6 +17,9 @@ import type {
   VoteValidationError,
   VotingContext,
 } from './voting.types';
+import * as votingQueries from './voting.queries';
+import * as teamsQueries from '../teams/teams.queries';
+import type { VoteRow, PrivateNoteRow } from '../../core/db/types';
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -35,44 +38,57 @@ export const updatePrivateNoteSchema = z.object({
 });
 
 // ============================================================================
-// IN-MEMORY STORAGE (Replace with database in production)
+// VOTING STATE (Simple flag - could be moved to database config table)
 // ============================================================================
 
-interface StorageState {
-  votes: Map<VoteId, Vote>;
-  privateNotes: Map<string, PrivateNote>; // key: `${userId}:${teamId}`
-  teams: Map<TeamId, { id: TeamId; name: string; hasPresented: boolean; memberIds: UserId[] }>;
-  votingOpen: boolean;
+let votingOpen = true;
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function rowToVote(row: VoteRow): Vote {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    teamId: row.team_id,
+    isFinalVote: row.is_final_vote,
+    publicNote: row.public_note,
+    submittedAt: row.submitted_at,
+  };
 }
 
-const storage: StorageState = {
-  votes: new Map(),
-  privateNotes: new Map(),
-  teams: new Map(),
-  votingOpen: true,
-};
+function rowToPrivateNote(row: PrivateNoteRow): PrivateNote {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    teamId: row.team_id,
+    note: row.note,
+    ranking: row.ranking,
+    updatedAt: row.updated_at,
+  };
+}
 
 // ============================================================================
 // VALIDATION FUNCTIONS
 // ============================================================================
 
-export function validateVote(
+export async function validateVote(
   request: SubmitVoteRequest,
   context: VotingContext
-): VoteValidationResult {
+): Promise<VoteValidationResult> {
   // Check if voting is open
-  if (!storage.votingOpen) {
+  if (!votingOpen) {
     return { isValid: false, error: 'VOTING_CLOSED' };
   }
 
-  // Check if team exists
-  const team = storage.teams.get(request.teamId);
+  // Check if team exists and has presented
+  const team = await teamsQueries.getTeamById(request.teamId);
   if (!team) {
     return { isValid: false, error: 'TEAM_NOT_FOUND' };
   }
 
-  // Check if team has presented
-  if (!team.hasPresented) {
+  if (!team.has_presented) {
     return { isValid: false, error: 'TEAM_NOT_PRESENTED' };
   }
 
@@ -82,16 +98,15 @@ export function validateVote(
   }
 
   // Check if user is a member of the team they're trying to vote for
-  if (team.memberIds.includes(context.userId)) {
+  const userTeamId = await teamsQueries.getUserTeamId(context.userId);
+  if (userTeamId === request.teamId) {
     return { isValid: false, error: 'SELF_VOTE_NOT_ALLOWED' };
   }
 
   // Check if user has already cast a final vote
   if (request.isFinalVote) {
-    const existingFinalVote = Array.from(storage.votes.values()).find(
-      (v) => v.userId === context.userId && v.isFinalVote
-    );
-    if (existingFinalVote) {
+    const hasFinal = await votingQueries.hasFinalVote(context.userId);
+    if (hasFinal) {
       return { isValid: false, error: 'ALREADY_VOTED_FINAL' };
     }
   }
@@ -117,7 +132,7 @@ export async function submitVote(
   }
 
   // Validate vote rules
-  const validation = validateVote(request, context);
+  const validation = await validateVote(request, context);
   if (!validation.isValid) {
     return {
       success: false,
@@ -125,24 +140,23 @@ export async function submitVote(
     };
   }
 
-  // Check for existing non-final vote from this user for this team
-  const existingVoteEntry = Array.from(storage.votes.entries()).find(
-    ([_, v]) => v.userId === context.userId && v.teamId === request.teamId && !v.isFinalVote
+  // Check for existing non-final vote
+  const existingVote = await votingQueries.getUserVotes(context.userId);
+  const existingNonFinal = existingVote.find(
+    (v) => v.team_id === request.teamId && !v.is_final_vote
   );
 
-  const voteId = existingVoteEntry ? existingVoteEntry[0] : generateId();
-  const isNew = !existingVoteEntry;
+  const isNew = !existingNonFinal;
 
-  const vote: Vote = {
-    id: voteId,
+  // Submit vote to database
+  const voteRow = await votingQueries.submitVote({
     userId: context.userId,
     teamId: request.teamId,
     isFinalVote: request.isFinalVote,
     publicNote: request.publicNote ?? null,
-    submittedAt: new Date(),
-  };
+  });
 
-  storage.votes.set(voteId, vote);
+  const vote = rowToVote(voteRow);
 
   return {
     success: true,
@@ -153,41 +167,17 @@ export async function submitVote(
 export async function getUserRankings(
   userId: UserId
 ): Promise<ApiResponse<RankingsResponse>> {
-  const userNotes: UserRanking[] = [];
-  let finalVoteTeamId: TeamId | null = null;
+  // Get rankings from database
+  const rankings = await votingQueries.getUserRankings(userId);
+  const finalVoteTeamId = await votingQueries.getFinalVoteTeamId(userId);
 
-  // Get user's final vote
-  const finalVote = Array.from(storage.votes.values()).find(
-    (v) => v.userId === userId && v.isFinalVote
-  );
-  if (finalVote) {
-    finalVoteTeamId = finalVote.teamId;
-  }
-
-  // Get all teams and user's notes/votes
-  for (const team of storage.teams.values()) {
-    if (!team.hasPresented) continue;
-
-    const noteKey = `${userId}:${team.id}`;
-    const privateNote = storage.privateNotes.get(noteKey);
-    const hasVoted = Array.from(storage.votes.values()).some(
-      (v) => v.userId === userId && v.teamId === team.id
-    );
-
-    userNotes.push({
-      teamId: team.id,
-      teamName: team.name,
-      ranking: privateNote?.ranking ?? 0,
-      note: privateNote?.note ?? '',
-      hasVoted,
-    });
-  }
-
-  // Sort by ranking (higher first, then alphabetically by name)
-  userNotes.sort((a, b) => {
-    if (a.ranking !== b.ranking) return b.ranking - a.ranking;
-    return a.teamName.localeCompare(b.teamName);
-  });
+  const userNotes: UserRanking[] = rankings.map((r) => ({
+    teamId: r.team_id,
+    teamName: r.team_name,
+    ranking: r.ranking,
+    note: r.note,
+    hasVoted: r.has_voted,
+  }));
 
   return {
     success: true,
@@ -209,7 +199,7 @@ export async function updatePrivateNote(
   }
 
   // Check if team exists
-  const team = storage.teams.get(request.teamId);
+  const team = await teamsQueries.getTeamById(request.teamId);
   if (!team) {
     return {
       success: false,
@@ -217,19 +207,15 @@ export async function updatePrivateNote(
     };
   }
 
-  const noteKey = `${userId}:${request.teamId}`;
-  const existingNote = storage.privateNotes.get(noteKey);
-
-  const privateNote: PrivateNote = {
-    id: existingNote?.id ?? generateId(),
+  // Update or create private note
+  const noteRow = await votingQueries.updatePrivateNote({
     userId,
     teamId: request.teamId,
     note: request.note,
     ranking: request.ranking,
-    updatedAt: new Date(),
-  };
+  });
 
-  storage.privateNotes.set(noteKey, privateNote);
+  const privateNote = rowToPrivateNote(noteRow);
 
   return {
     success: true,
@@ -238,17 +224,15 @@ export async function updatePrivateNote(
 }
 
 export async function getVoteCount(teamId: TeamId): Promise<number> {
-  return Array.from(storage.votes.values()).filter(
-    (v) => v.teamId === teamId && v.isFinalVote
-  ).length;
+  return await votingQueries.getVoteCount(teamId);
 }
 
 export async function setVotingOpen(isOpen: boolean): Promise<void> {
-  storage.votingOpen = isOpen;
+  votingOpen = isOpen;
 }
 
 export async function isVotingOpen(): Promise<boolean> {
-  return storage.votingOpen;
+  return votingOpen;
 }
 
 // ============================================================================
@@ -256,32 +240,27 @@ export async function isVotingOpen(): Promise<boolean> {
 // ============================================================================
 
 export async function registerTeam(
-  id: TeamId,
+  _id: TeamId,
   name: string,
-  memberIds: UserId[]
+  _memberIds: UserId[]
 ): Promise<void> {
-  storage.teams.set(id, {
-    id,
-    name,
-    hasPresented: false,
-    memberIds,
-  });
+  // This should use teams service, but keeping for compatibility
+  await teamsQueries.createTeam({ name });
+  // Member assignment would be done separately
 }
 
 export async function markTeamAsPresented(teamId: TeamId): Promise<boolean> {
-  const team = storage.teams.get(teamId);
-  if (!team) return false;
-  team.hasPresented = true;
-  return true;
+  try {
+    await teamsQueries.updateTeam(teamId, { hasPresented: true });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
-
-function generateId(): string {
-  return crypto.randomUUID();
-}
 
 function getValidationErrorMessage(error: VoteValidationError): string {
   const messages: Record<VoteValidationError, string> = {

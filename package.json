@@ -17,10 +17,8 @@
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:unit": "npm run test:unit --workspaces --if-present",
-    "db:generate": "npx prisma generate",
-    "db:push": "npx prisma db push",
-    "db:migrate": "npx prisma migrate dev",
-    "db:studio": "npx prisma studio",
+    "db:migrate": "tsx packages/server/src/core/migrations/cli.ts run",
+    "db:migrate:status": "tsx packages/server/src/core/migrations/cli.ts status",
     "prepare": "node -e \"try { require('husky').install() } catch (e) {}\""
   },
   "devDependencies": {
