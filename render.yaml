@@ -7,7 +7,7 @@ services:
     runtime: node
     region: oregon
     plan: free
-    buildCommand: npm run build -w @voting/shared && npm run build -w @voting/server
+    buildCommand: npm install && npm run build -w @voting/shared && npm run build -w @voting/server
     startCommand: npm run start -w @voting/server
     healthCheckPath: /health
     envVars:
