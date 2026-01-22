@@ -1023,22 +1023,22 @@ Get current rankings.
     {
       "teamId": "550e8400-e29b-41d4-a716-446655440001",
       "teamName": "Team Alpha",
-      "voteCount": 15,
-      "rank": 1,
+      "voteCount": "15",
+      "rank": "1",
       "hasPresented": true
     },
     {
       "teamId": "550e8400-e29b-41d4-a716-446655440002",
       "teamName": "Team Beta",
-      "voteCount": 15,
-      "rank": 1,
+      "voteCount": "15",
+      "rank": "1",
       "hasPresented": true
     },
     {
       "teamId": "550e8400-e29b-41d4-a716-446655440003",
       "teamName": "Team Gamma",
-      "voteCount": 12,
-      "rank": 2,
+      "voteCount": "12",
+      "rank": "2",
       "hasPresented": true
     }
   ],
@@ -1046,7 +1046,7 @@ Get current rankings.
 }
 ```
 
-Note: Uses DENSE_RANK - ties share the same rank.
+**Note:** `voteCount` and `rank` are returned as strings. Parse to integers if needed. Uses DENSE_RANK - ties share the same rank.
 
 ---
 
@@ -1066,8 +1066,8 @@ Get leaderboard statistics.
     "topTeam": {
       "teamId": "550e8400-e29b-41d4-a716-446655440001",
       "teamName": "Team Alpha",
-      "voteCount": 15,
-      "rank": 1,
+      "voteCount": "15",
+      "rank": "1",
       "hasPresented": true
     }
   },
@@ -1092,8 +1092,8 @@ Get specific team's leaderboard entry.
   "data": {
     "teamId": "550e8400-e29b-41d4-a716-446655440001",
     "teamName": "Team Alpha",
-    "voteCount": 15,
-    "rank": 1,
+    "voteCount": "15",
+    "rank": "1",
     "hasPresented": true
   },
   "timestamp": "2024-01-20T10:30:00.000Z"
@@ -1510,3 +1510,47 @@ socket.on('vote:count:update', (data: { teamId: string, count: number }) => {});
 4. **Team Size**: 3-6 members per team enforced
 5. **Team Lock**: Users cannot change teams after submitting final vote
 6. **Voting Window**: Admin controls when voting is open/closed
+
+---
+
+## Verified Endpoints (Tested 2026-01-22)
+
+All endpoints below have been tested against the live deployment:
+
+| Endpoint | Method | Auth | Status |
+|----------|--------|------|--------|
+| `/health` | GET | No | ✅ Verified |
+| `/api/v1/auth/register` | POST | No | ✅ Verified |
+| `/api/v1/auth/login` | POST | No | ✅ Verified |
+| `/api/v1/auth/me` | GET | Yes | ✅ Verified |
+| `/api/v1/auth/refresh` | POST | No | ✅ Verified |
+| `/api/v1/teams` | GET | Yes | ✅ Verified |
+| `/api/v1/teams/:id` | GET | Yes | ✅ Verified |
+| `/api/v1/teams/:id/members` | GET | Yes | ✅ Verified |
+| `/api/v1/votes` | POST | Yes | ✅ Verified |
+| `/api/v1/votes/me` | GET | Yes | ✅ Verified |
+| `/api/v1/votes/status` | GET | Yes | ✅ Verified |
+| `/api/v1/votes/rankings` | GET | Yes | ✅ Verified |
+| `/api/v1/votes/notes` | PUT | Yes | ✅ Verified |
+| `/api/v1/votes/notes/export` | GET | Yes | ✅ Verified |
+| `/api/v1/votes/teams/:id/count` | GET | Yes | ✅ Verified |
+| `/api/v1/leaderboard` | GET | No | ✅ Verified |
+| `/api/v1/leaderboard/stats` | GET | No | ✅ Verified |
+| `/api/v1/leaderboard/:id` | GET | No | ✅ Verified |
+| `/api/v1/presentations` | GET | Yes | ✅ Verified |
+| `/api/v1/presentations/current` | GET | Yes | ✅ Verified |
+| `/api/v1/presentations/upcoming` | GET | Yes | ✅ Verified |
+| `/api/v1/presentations/status` | GET | Yes | ✅ Verified |
+| `/api/v1/timer` | GET | Yes | ✅ Verified |
+| `/api/docs` | GET | No | ✅ Verified |
+
+**Verified Behaviors:**
+- ✅ Password validation (requires uppercase, lowercase, number, special char)
+- ✅ JWT authentication with 7-day access token expiry
+- ✅ Token refresh flow working
+- ✅ Rate limiting (5 req/15min on auth endpoints)
+- ✅ Duplicate vote prevention ("You have already cast your final vote")
+- ✅ Vote count updates in real-time on leaderboard
+- ✅ Private notes with rankings saved correctly
+- ✅ 401 responses for unauthenticated requests
+- ✅ 404 responses for invalid routes
