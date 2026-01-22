@@ -52,6 +52,25 @@ export function createApp() {
   // Response formatting
   app.use(responseFormatter);
 
+  // Root endpoint - API info
+  app.get('/', (_req, res) => {
+    res.json({
+      name: 'Hackathon Voting API',
+      version: '1.0.0',
+      description: 'REST API for hackathon voting with real-time WebSocket support',
+      documentation: '/api/docs',
+      health: '/health',
+      endpoints: {
+        auth: '/api/v1/auth',
+        teams: '/api/v1/teams',
+        votes: '/api/v1/votes',
+        leaderboard: '/api/v1/leaderboard',
+        presentations: '/api/v1/presentations',
+        timer: '/api/v1/timer',
+      },
+    });
+  });
+
   // Health check
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
