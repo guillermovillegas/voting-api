@@ -16,6 +16,7 @@ import {
   verifyToken,
 } from './auth.service';
 import { requireAuth, type AuthenticatedRequest } from './auth.middleware';
+import { query } from '../../core/db/client';
 import type { User } from '@voting/shared';
 import * as authQueries from './auth.queries';
 import type { UserRow } from '../../core/db/types';
@@ -359,6 +360,83 @@ router.put(
       console.error('Password change error:', error);
       res.status(500).json(
         errorResponse('An unexpected error occurred', 'INTERNAL_SERVER_ERROR', 500)
+      );
+    }
+  }
+);
+
+/**
+ * POST /api/v1/auth/setup
+ * Setup user with name and team (for training sessions)
+ * Uses X-User-Id header for identification
+ */
+router.post(
+  '/setup',
+  validateBody(
+    z.object({
+      name: z.string().min(1, 'Name is required').max(100),
+      teamId: z.string().uuid('Invalid team ID'),
+    })
+  ),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const userId = req.headers['x-user-id'];
+      const userName = req.headers['x-user-name'];
+
+      if (!userId || typeof userId !== 'string') {
+        res.status(400).json({
+          success: false,
+          error: 'X-User-Id header is required',
+          code: 'MISSING_USER_ID',
+        });
+        return;
+      }
+
+      const { name, teamId } = req.body;
+
+      // Find or create user
+      let userRow = await authQueries.findUserById(userId);
+
+      if (!userRow) {
+        // Create new user with provided info
+        userRow = await authQueries.createUser({
+          email: `training-${userId}@voting.app`,
+          password: '',
+          name: name,
+          role: 'voter',
+          teamId: teamId,
+        });
+
+        // Update the ID to match the provided one (for training mode)
+        await query(
+          `UPDATE users SET id = $1 WHERE id = $2`,
+          [userId, userRow.id]
+        );
+        userRow.id = userId;
+      } else {
+        // Update existing user
+        await query(
+          `UPDATE users SET name = $1, team_id = $2, updated_at = NOW() WHERE id = $3`,
+          [name, teamId, userId]
+        );
+        userRow.name = name;
+        userRow.team_id = teamId;
+      }
+
+      const user = rowToUser(userRow);
+
+      logAudit(createAuditLog(req, 'user:setup', 'user', user.id, true));
+
+      res.json(
+        successResponse({
+          user,
+          message: 'Setup complete',
+        })
+      );
+    } catch (error) {
+      console.error('Setup error:', error);
+      res.status(500).json(
+        errorResponse('Failed to complete setup', 'INTERNAL_SERVER_ERROR', 500)
       );
     }
   }

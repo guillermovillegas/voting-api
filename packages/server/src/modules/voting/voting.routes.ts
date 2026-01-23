@@ -22,8 +22,7 @@ import {
 import * as votingQueries from './voting.queries';
 import { broadcaster } from '../../core/socket';
 import { leaderboardService } from '../leaderboard/leaderboard.service';
-import { requireAuth, type AuthenticatedRequest } from '../auth/auth.middleware';
-import { requireAdmin } from '../auth/auth.middleware';
+import { userIdAuth, requireAuth, requireAdmin, type AuthenticatedRequest } from '../auth/auth.middleware';
 import { voteRateLimiter } from '../../core/api/rateLimit';
 import { validateBody, validateParams, teamIdParamSchema } from '../../core/api/validation';
 import { successResponse } from '../../core/api/response';
@@ -38,7 +37,9 @@ const router = Router();
 // MIDDLEWARE
 // ============================================================================
 
-// All voting routes require authentication
+// All voting routes support X-User-Id header OR JWT authentication
+// userIdAuth checks X-User-Id first, requireAuth falls back to JWT
+router.use(userIdAuth);
 router.use(requireAuth);
 
 // ============================================================================

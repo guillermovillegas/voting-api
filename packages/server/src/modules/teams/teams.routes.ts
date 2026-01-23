@@ -15,7 +15,7 @@ import {
   teamIdSchema,
 } from './teams.validation';
 import type { TeamId, UserId } from '@voting/shared';
-import { requireAuth, requireAdmin, type AuthenticatedRequest } from '../auth/auth.middleware';
+import { userIdAuth, requireAuth, requireAdmin, type AuthenticatedRequest } from '../auth/auth.middleware';
 import { generalRateLimiter } from '../../core/api/rateLimit';
 import { validateBody, validateParams, teamIdParamSchema, userIdParamSchema } from '../../core/api/validation';
 import { successResponse } from '../../core/api/response';
@@ -29,7 +29,8 @@ const router = Router();
 // MIDDLEWARE
 // ============================================================================
 
-// All team routes require authentication
+// All team routes support X-User-Id header OR JWT authentication
+router.use(userIdAuth);
 router.use(requireAuth);
 
 // ============================================================================

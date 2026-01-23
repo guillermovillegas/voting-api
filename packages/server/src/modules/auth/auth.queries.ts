@@ -110,3 +110,47 @@ export async function getAllUsers(): Promise<UserRow[]> {
   );
   return result.rows;
 }
+
+/**
+ * Find or create a training user by UUID
+ * Used for X-User-Id header authentication (training mode)
+ * Updates user name if it changed
+ */
+export async function findOrCreateAnonymousUser(userId: string, displayName?: string): Promise<UserRow> {
+  // First try to find existing user
+  const existing = await findUserById(userId);
+  if (existing) {
+    // Update name if provided and different
+    if (displayName && existing.name !== displayName) {
+      await query(
+        `UPDATE users SET name = $1, updated_at = NOW() WHERE id = $2`,
+        [displayName, userId]
+      );
+      existing.name = displayName;
+    }
+    return existing;
+  }
+
+  // Create training user with the provided UUID and name
+  const name = displayName || `User ${userId.substring(0, 8)}`;
+  const result = await query<UserRow>(
+    `INSERT INTO users (id, email, password, name, role, team_id, is_anonymous)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (id) DO UPDATE SET name = $4, updated_at = NOW()
+     RETURNING id, email, password, name, role, team_id, created_at, updated_at`,
+    [
+      userId,
+      `training-${userId}@voting.app`,
+      '', // No password for training users
+      name,
+      'voter',
+      null,
+      true,
+    ]
+  );
+
+  if (!result.rows[0]) {
+    throw new Error('Failed to create training user');
+  }
+  return result.rows[0];
+}

@@ -1,11 +1,15 @@
 /**
  * Auth Middleware
- * Protects routes and extracts authenticated user from JWT
+ * Protects routes and extracts authenticated user from JWT or X-User-Id header
  */
 
 import type { Request, Response, NextFunction } from 'express';
 import { verifyToken, type JWTPayload } from './auth.service';
 import type { UserRole } from '@voting/shared';
+import { findOrCreateAnonymousUser } from './auth.queries';
+
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // Extend Express Request type to include authenticated user
 declare global {
@@ -31,19 +35,97 @@ function extractBearerToken(authHeader: string | undefined): string | null {
 }
 
 /**
- * Middleware to protect routes - requires valid JWT
+ * Validate UUID format
+ */
+function isValidUUID(id: string): boolean {
+  return UUID_REGEX.test(id);
+}
+
+/**
+ * Middleware to authenticate via X-User-Id header
+ * Used for training sessions - creates users with provided name
+ * Falls through to JWT auth if X-User-Id header is not present
+ *
+ * Headers:
+ * - X-User-Id: Required UUID for user identification
+ * - X-User-Name: Optional display name (defaults to "User {uuid prefix}")
+ */
+export async function userIdAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  const userId = req.headers['x-user-id'];
+  const userName = req.headers['x-user-name'];
+
+  // If no X-User-Id header, fall through to next middleware (JWT auth)
+  if (!userId || typeof userId !== 'string') {
+    next();
+    return;
+  }
+
+  // Validate UUID format
+  if (!isValidUUID(userId)) {
+    res.status(400).json({
+      success: false,
+      error: 'Invalid X-User-Id format. Must be a valid UUID.',
+      code: 'INVALID_USER_ID',
+    });
+    return;
+  }
+
+  // Get user name from header or generate default
+  const displayName = typeof userName === 'string' && userName.trim()
+    ? userName.trim()
+    : `User ${userId.substring(0, 8)}`;
+
+  try {
+    // Find or create user with provided name
+    const user = await findOrCreateAnonymousUser(userId, displayName);
+
+    // Attach user to request (same format as JWT middleware)
+    // Add iat/exp for compatibility with JWTPayload type
+    const now = Math.floor(Date.now() / 1000);
+    req.user = {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      iat: now,
+      exp: now + 86400 * 7, // 7 days from now
+    };
+
+    next();
+  } catch (error) {
+    console.error('X-User-Id auth error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to authenticate with X-User-Id',
+      code: 'AUTH_ERROR',
+    });
+  }
+}
+
+/**
+ * Middleware to protect routes - requires valid JWT or X-User-Id (if already authenticated)
  */
 export function requireAuth(
   req: Request,
   res: Response,
   next: NextFunction
 ): void {
+  // If already authenticated by userIdAuth middleware, skip JWT check
+  if (req.user) {
+    next();
+    return;
+  }
+
   const token = extractBearerToken(req.headers.authorization);
 
   if (!token) {
     res.status(401).json({
       success: false,
-      error: 'Authentication required. Please provide a valid Bearer token.',
+      error: 'Authentication required. Provide either X-User-Id header or Authorization Bearer token.',
+      code: 'UNAUTHORIZED',
     });
     return;
   }
@@ -135,6 +217,7 @@ export function isAuthenticated(req: Request): req is AuthenticatedRequest {
 }
 
 export const AuthMiddleware = {
+  userIdAuth,
   requireAuth,
   requireRole,
   optionalAuth,
