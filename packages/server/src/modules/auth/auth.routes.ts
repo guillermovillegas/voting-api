@@ -15,7 +15,7 @@ import {
   refreshAccessToken,
   verifyToken,
 } from './auth.service';
-import { requireAuth, type AuthenticatedRequest } from './auth.middleware';
+import { userIdAuth, requireAuth, type AuthenticatedRequest } from './auth.middleware';
 import { query } from '../../core/db/client';
 import type { User } from '@voting/shared';
 import * as authQueries from './auth.queries';
@@ -287,7 +287,7 @@ router.post(
  * GET /api/v1/auth/me
  * Get current authenticated user
  */
-router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/me', userIdAuth, requireAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const userRow = await authQueries.findUserById(req.user.userId);
 
@@ -316,6 +316,7 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response):
  */
 router.put(
   '/me',
+  userIdAuth,
   requireAuth,
   validateBody(
     z.object({

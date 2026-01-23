@@ -8,7 +8,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import * as presentationsService from './presentations.service';
-import { requireAuth, type AuthenticatedRequest } from '../auth/auth.middleware';
+import { userIdAuth, requireAuth, type AuthenticatedRequest } from '../auth/auth.middleware';
 import { generalRateLimiter } from '../../core/api/rateLimit';
 import { validateParams, presentationIdParamSchema } from '../../core/api/validation';
 import { successResponse } from '../../core/api/response';
@@ -22,7 +22,8 @@ const router = Router();
 // MIDDLEWARE
 // ============================================================================
 
-// All presentation routes require authentication
+// All presentation routes support X-User-Id header OR JWT authentication
+router.use(userIdAuth);
 router.use(requireAuth);
 
 // ============================================================================

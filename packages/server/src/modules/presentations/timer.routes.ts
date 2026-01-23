@@ -8,7 +8,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import * as timerService from './timer.service';
-import { requireAuth, type AuthenticatedRequest } from '../auth/auth.middleware';
+import { userIdAuth, requireAuth, type AuthenticatedRequest } from '../auth/auth.middleware';
 import { generalRateLimiter } from '../../core/api/rateLimit';
 import { validateBody } from '../../core/api/validation';
 import { z } from 'zod';
@@ -23,7 +23,8 @@ const router = Router();
 // MIDDLEWARE
 // ============================================================================
 
-// All timer routes require authentication
+// All timer routes support X-User-Id header OR JWT authentication
+router.use(userIdAuth);
 router.use(requireAuth);
 
 // ============================================================================
