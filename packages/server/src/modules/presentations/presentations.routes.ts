@@ -8,7 +8,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import * as presentationsService from './presentations.service';
-import { requireAuth, requireAdmin, type AuthenticatedRequest } from '../auth/auth.middleware';
+import { requireAuth, type AuthenticatedRequest } from '../auth/auth.middleware';
 import { generalRateLimiter } from '../../core/api/rateLimit';
 import { validateParams, presentationIdParamSchema } from '../../core/api/validation';
 import { successResponse } from '../../core/api/response';
@@ -180,12 +180,11 @@ router.get(
 
 /**
  * POST /api/v1/presentations/initialize
- * Initialize presentation queue (admin only)
+ * Initialize presentation queue
  * Creates presentations for all teams and randomizes order
  */
 router.post(
   '/initialize',
-  requireAdmin,
   generalRateLimiter,
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -211,11 +210,10 @@ router.post(
 
 /**
  * POST /api/v1/presentations/:id/start
- * Start a presentation (admin only)
+ * Start a presentation
  */
 router.post(
   '/:id/start',
-  requireAdmin,
   generalRateLimiter,
   validateParams(presentationIdParamSchema),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -248,11 +246,10 @@ router.post(
 
 /**
  * POST /api/v1/presentations/next
- * Advance to next presentation (admin only)
+ * Advance to next presentation
  */
 router.post(
   '/next',
-  requireAdmin,
   generalRateLimiter,
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -278,11 +275,10 @@ router.post(
 
 /**
  * POST /api/v1/presentations/reset
- * Reset presentation queue (admin only)
+ * Reset presentation queue
  */
 router.post(
   '/reset',
-  requireAdmin,
   generalRateLimiter,
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {

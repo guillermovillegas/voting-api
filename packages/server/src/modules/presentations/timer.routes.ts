@@ -8,7 +8,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import * as timerService from './timer.service';
-import { requireAuth, requireAdmin, type AuthenticatedRequest } from '../auth/auth.middleware';
+import { requireAuth, type AuthenticatedRequest } from '../auth/auth.middleware';
 import { generalRateLimiter } from '../../core/api/rateLimit';
 import { validateBody } from '../../core/api/validation';
 import { z } from 'zod';
@@ -55,12 +55,11 @@ router.get('/', generalRateLimiter, async (req: AuthenticatedRequest, res: Respo
 
 /**
  * POST /api/v1/timer/start
- * Start timer (admin only)
+ * Start timer
  * Requires presentationId in body
  */
 router.post(
   '/start',
-  requireAdmin,
   generalRateLimiter,
   validateBody(z.object({ presentationId: z.string().uuid('Invalid presentation ID') })),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -93,11 +92,10 @@ router.post(
 
 /**
  * POST /api/v1/timer/pause
- * Pause timer (admin only)
+ * Pause timer
  */
 router.post(
   '/pause',
-  requireAdmin,
   generalRateLimiter,
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -124,11 +122,10 @@ router.post(
 
 /**
  * POST /api/v1/timer/reset
- * Reset timer (admin only)
+ * Reset timer
  */
 router.post(
   '/reset',
-  requireAdmin,
   generalRateLimiter,
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
@@ -155,11 +152,10 @@ router.post(
 
 /**
  * PUT /api/v1/timer/duration
- * Update timer duration (admin only)
+ * Update timer duration
  */
 router.put(
   '/duration',
-  requireAdmin,
   generalRateLimiter,
   validateBody(z.object({ durationSeconds: z.number().int().min(1).max(3600) })),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {

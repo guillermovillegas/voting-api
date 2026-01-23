@@ -18,13 +18,45 @@ npm run dev:server
 
 Server runs at `http://localhost:3000`
 
-### 2. Register an Account
+### 2. Join (Simple - Recommended for Training)
+
+The easiest way to get started - no password required:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/join \
+  -H "Content-Type: application/json" \
+  -d '{"name": "John Doe"}'
+```
+
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "John Doe"
+    },
+    "message": "Welcome! Store your user ID to stay logged in."
+  }
+}
+```
+
+**Important:** Save the `user.id` - you'll use it as the `X-User-Id` header for all requests:
+
+```bash
+curl http://localhost:3000/api/v1/teams \
+  -H "X-User-Id: 550e8400-e29b-41d4-a716-446655440000"
+```
+
+### 2b. Register (Full Account - Optional)
+
+For production use with email/password:
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "johndoe",
     "name": "John Doe",
     "email": "john@example.com",
     "password": "SecurePass123!"
@@ -38,7 +70,7 @@ curl -X POST http://localhost:3000/api/v1/auth/register \
 - At least one number
 - At least one special character
 
-### 3. Login and Get Token
+### 3. Login (For Email/Password Users)
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/auth/login \
@@ -53,6 +85,8 @@ Response includes `accessToken` - use this for authenticated requests:
 ```bash
 Authorization: Bearer <your-access-token>
 ```
+
+**Note:** If you used `/auth/join`, use the `X-User-Id` header instead.
 
 ---
 
@@ -127,13 +161,13 @@ curl http://localhost:3000/api/v1/leaderboard
 
 ---
 
-## For Admins
+## Managing the Event
 
 ### Create a Team
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/teams \
-  -H "Authorization: Bearer <admin-token>" \
+  -H "X-User-Id: <your-user-id>" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Team Alpha",
@@ -145,7 +179,7 @@ curl -X POST http://localhost:3000/api/v1/teams \
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/teams/<team-id>/members \
-  -H "Authorization: Bearer <admin-token>" \
+  -H "X-User-Id: <your-user-id>" \
   -H "Content-Type: application/json" \
   -d '{
     "memberIds": ["<user-id-1>", "<user-id-2>"]
@@ -158,7 +192,7 @@ Randomly orders teams for presentations:
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/presentations/initialize \
-  -H "Authorization: Bearer <admin-token>"
+  -H "X-User-Id: <your-user-id>"
 ```
 
 ### Control Presentations
@@ -166,13 +200,13 @@ curl -X POST http://localhost:3000/api/v1/presentations/initialize \
 **Start a presentation:**
 ```bash
 curl -X POST http://localhost:3000/api/v1/presentations/<presentation-id>/start \
-  -H "Authorization: Bearer <admin-token>"
+  -H "X-User-Id: <your-user-id>"
 ```
 
 **Move to next presentation:**
 ```bash
 curl -X POST http://localhost:3000/api/v1/presentations/next \
-  -H "Authorization: Bearer <admin-token>"
+  -H "X-User-Id: <your-user-id>"
 ```
 
 ### Control Timer
@@ -180,7 +214,7 @@ curl -X POST http://localhost:3000/api/v1/presentations/next \
 **Start timer:**
 ```bash
 curl -X POST http://localhost:3000/api/v1/timer/start \
-  -H "Authorization: Bearer <admin-token>" \
+  -H "X-User-Id: <your-user-id>" \
   -H "Content-Type: application/json" \
   -d '{"presentationId": "<presentation-id>"}'
 ```
@@ -188,13 +222,13 @@ curl -X POST http://localhost:3000/api/v1/timer/start \
 **Pause timer:**
 ```bash
 curl -X POST http://localhost:3000/api/v1/timer/pause \
-  -H "Authorization: Bearer <admin-token>"
+  -H "X-User-Id: <your-user-id>"
 ```
 
 **Set timer duration (in seconds):**
 ```bash
 curl -X PUT http://localhost:3000/api/v1/timer/duration \
-  -H "Authorization: Bearer <admin-token>" \
+  -H "X-User-Id: <your-user-id>" \
   -H "Content-Type: application/json" \
   -d '{"durationSeconds": 300}'
 ```
@@ -204,22 +238,22 @@ curl -X PUT http://localhost:3000/api/v1/timer/duration \
 Open or close voting:
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/votes/admin/toggle \
-  -H "Authorization: Bearer <admin-token>"
+curl -X POST http://localhost:3000/api/v1/votes/toggle \
+  -H "X-User-Id: <your-user-id>"
 ```
 
 ### View Statistics
 
 ```bash
 curl http://localhost:3000/api/v1/admin/stats \
-  -H "Authorization: Bearer <admin-token>"
+  -H "X-User-Id: <your-user-id>"
 ```
 
 ### Export All Votes
 
 ```bash
 curl http://localhost:3000/api/v1/admin/votes/export \
-  -H "Authorization: Bearer <admin-token>"
+  -H "X-User-Id: <your-user-id>"
 ```
 
 ---
@@ -243,8 +277,7 @@ curl http://localhost:3000/health
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| 401 Unauthorized | Missing or invalid token | Login again to get fresh token |
-| 403 Forbidden | Not an admin | Use an admin account |
+| 401 Unauthorized | Missing or invalid auth | Include X-User-Id header or Bearer token |
 | 422 Already voted | Already submitted final vote | Final votes cannot be changed |
 | 422 Cannot vote for self | Trying to vote for own team | Vote for a different team |
 | 429 Too Many Requests | Rate limited | Wait and retry |

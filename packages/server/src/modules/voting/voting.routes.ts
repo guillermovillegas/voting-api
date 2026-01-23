@@ -22,7 +22,7 @@ import {
 import * as votingQueries from './voting.queries';
 import { broadcaster } from '../../core/socket';
 import { leaderboardService } from '../leaderboard/leaderboard.service';
-import { userIdAuth, requireAuth, requireAdmin, type AuthenticatedRequest } from '../auth/auth.middleware';
+import { userIdAuth, requireAuth, type AuthenticatedRequest } from '../auth/auth.middleware';
 import { voteRateLimiter } from '../../core/api/rateLimit';
 import { validateBody, validateParams, teamIdParamSchema } from '../../core/api/validation';
 import { successResponse } from '../../core/api/response';
@@ -284,12 +284,11 @@ router.get('/status', async (req: AuthenticatedRequest, res: Response): Promise<
 });
 
 /**
- * POST /api/v1/votes/admin/toggle
- * Toggle voting open/closed (admin only)
+ * POST /api/v1/votes/toggle
+ * Toggle voting open/closed
  */
 router.post(
-  '/admin/toggle',
-  requireAdmin,
+  '/toggle',
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
       const currentStatus = await isVotingOpen();

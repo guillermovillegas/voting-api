@@ -311,6 +311,56 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response):
 });
 
 /**
+ * PUT /api/v1/auth/me
+ * Update current user's profile (name and/or team)
+ */
+router.put(
+  '/me',
+  requireAuth,
+  validateBody(
+    z.object({
+      name: z.string().min(1, 'Name is required').max(100).optional(),
+      teamId: z.string().uuid('Invalid team ID').nullable().optional(),
+    })
+  ),
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { name, teamId } = req.body;
+
+      // Check if there's anything to update
+      if (name === undefined && teamId === undefined) {
+        res.status(400).json(
+          errorResponse('No fields to update. Provide name or teamId.', 'VALIDATION_ERROR', 400)
+        );
+        return;
+      }
+
+      // Update user profile
+      const userRow = await authQueries.updateUserProfile(req.user.userId, { name, teamId });
+
+      if (!userRow) {
+        throw new NotFoundError('User', req.user.userId);
+      }
+
+      const user = rowToUser(userRow);
+
+      logAudit(createAuditLog(req, 'user:profile:update', 'user', user.id, true));
+
+      res.json(successResponse(user));
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof ValidationError) {
+        res.status(error.statusCode).json(error.toProblemDetails());
+        return;
+      }
+      console.error('Update profile error:', error);
+      res.status(500).json(
+        errorResponse('An unexpected error occurred', 'INTERNAL_SERVER_ERROR', 500)
+      );
+    }
+  }
+);
+
+/**
  * PUT /api/v1/auth/password
  * Change user password
  */
@@ -360,6 +410,61 @@ router.put(
       console.error('Password change error:', error);
       res.status(500).json(
         errorResponse('An unexpected error occurred', 'INTERNAL_SERVER_ERROR', 500)
+      );
+    }
+  }
+);
+
+/**
+ * POST /api/v1/auth/join
+ * Simple user creation - just provide a name
+ * Server auto-generates user ID, returns user object
+ * Frontend stores the ID and sends as X-User-Id on future requests
+ */
+router.post(
+  '/join',
+  validateBody(
+    z.object({
+      name: z.string().min(1, 'Name is required').max(100),
+    })
+  ),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { name } = req.body;
+
+      // Generate a new user ID
+      const userId = crypto.randomUUID();
+
+      // Create the user
+      const userRow = await authQueries.createUser({
+        email: `user-${userId}@voting.app`,
+        password: '', // No password needed
+        name: name,
+        role: 'voter',
+        teamId: null,
+      });
+
+      // Update the ID to use our generated one
+      await query(
+        `UPDATE users SET id = $1, is_anonymous = true WHERE id = $2`,
+        [userId, userRow.id]
+      );
+      userRow.id = userId;
+
+      const user = rowToUser(userRow);
+
+      logAudit(createAuditLog(req, 'user:join', 'user', user.id, true));
+
+      res.status(201).json(
+        successResponse({
+          user,
+          message: 'Welcome! Store your user ID to stay logged in.',
+        })
+      );
+    } catch (error) {
+      console.error('Join error:', error);
+      res.status(500).json(
+        errorResponse('Failed to join', 'INTERNAL_SERVER_ERROR', 500)
       );
     }
   }

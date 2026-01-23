@@ -10,7 +10,25 @@ This document provides complete API specifications for LLM-assisted integration 
 // API Base URL
 const API_URL = 'https://voting-api-lcvw.onrender.com';
 
-// Fetch with auth
+// OPTION 1: Simple auth with X-User-Id header (Recommended for training)
+// First, create a user:
+const joinRes = await fetch(`${API_URL}/api/v1/auth/join`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'Your Name' }),
+});
+const { data } = await joinRes.json();
+const userId = data.user.id; // Store this!
+
+// Then use X-User-Id header for all requests:
+const response = await fetch(`${API_URL}/api/v1/teams`, {
+  headers: {
+    'X-User-Id': userId,
+    'Content-Type': 'application/json',
+  },
+});
+
+// OPTION 2: JWT Bearer token (traditional auth)
 const response = await fetch(`${API_URL}/api/v1/teams`, {
   headers: {
     'Authorization': `Bearer ${accessToken}`,
@@ -654,7 +672,7 @@ class ApiClient {
     return this.request<TimerState>('/api/v1/timer');
   }
 
-  // ========== ADMIN ENDPOINTS ==========
+  // ========== TEAM MANAGEMENT ==========
 
   async createTeam(name: string, memberIds?: string[]): Promise<Team> {
     return this.request<Team>('/api/v1/teams', {
@@ -675,7 +693,7 @@ class ApiClient {
   }
 
   async toggleVoting(): Promise<{ isOpen: boolean }> {
-    return this.request<{ isOpen: boolean }>('/api/v1/votes/admin/toggle', {
+    return this.request<{ isOpen: boolean }>('/api/v1/votes/toggle', {
       method: 'POST',
     });
   }
@@ -1131,13 +1149,28 @@ AUTHENTICATION: Bearer Token (JWT)
 
 ## Authentication
 
-### Token Usage
+The API supports two authentication methods:
 
-All authenticated endpoints require the `Authorization` header:
+### Option 1: X-User-Id Header (Recommended for Training)
+
+Simple header-based auth for training and demos. No passwords required.
+
+```
+X-User-Id: <user-uuid>
+X-User-Name: <display-name>  (optional)
+```
+
+First, create a user with `POST /auth/join`, then use the returned ID in all requests.
+
+### Option 2: JWT Bearer Token
+
+Traditional token-based auth for production use.
 
 ```
 Authorization: Bearer <access_token>
 ```
+
+Get tokens via `POST /auth/login` or `POST /auth/register`.
 
 ### JWT Payload Structure
 
@@ -1566,6 +1599,108 @@ Change user password.
 
 ---
 
+### POST /auth/join
+
+Simple user creation - no password required. Ideal for training sessions.
+
+**Request:**
+
+```json
+{
+  "name": "John Doe"
+}
+```
+
+**Response (201):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "email": "user-550e8400@voting.app",
+      "name": "John Doe",
+      "role": "voter",
+      "teamId": null
+    },
+    "message": "Welcome! Store your user ID to stay logged in."
+  },
+  "timestamp": "2024-01-20T10:30:00.000Z"
+}
+```
+
+Store the returned `user.id` and send it as `X-User-Id` header on all future requests.
+
+---
+
+### POST /auth/setup
+
+Setup user with name and team assignment. Requires `X-User-Id` header.
+
+**Headers:** `X-User-Id: <user-uuid>` required
+
+**Request:**
+
+```json
+{
+  "name": "John Doe",
+  "teamId": "550e8400-e29b-41d4-a716-446655440001"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "John Doe",
+      "teamId": "550e8400-e29b-41d4-a716-446655440001"
+    },
+    "message": "Setup complete"
+  },
+  "timestamp": "2024-01-20T10:30:00.000Z"
+}
+```
+
+---
+
+### PUT /auth/me
+
+Update current user's profile.
+
+**Headers:** Authentication required (X-User-Id or Bearer token)
+
+**Request (all fields optional):**
+
+```json
+{
+  "name": "New Name",
+  "teamId": "550e8400-e29b-41d4-a716-446655440001"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "user@example.com",
+    "name": "New Name",
+    "role": "voter",
+    "teamId": "550e8400-e29b-41d4-a716-446655440001"
+  },
+  "timestamp": "2024-01-20T10:30:00.000Z"
+}
+```
+
+---
+
 ## Teams Endpoints
 
 All endpoints require `Authorization: Bearer <token>` header.
@@ -1659,7 +1794,7 @@ Get team with member list.
 
 ### POST /teams
 
-Create new team. **Admin only.**
+Create new team.
 
 **Request:**
 
@@ -1695,14 +1830,13 @@ Create new team. **Admin only.**
 ```
 
 **Errors:**
-- 403: Not admin
 - 409: Team name already exists
 
 ---
 
 ### PATCH /teams/:teamId
 
-Update team. **Admin only.**
+Update team.
 
 **Path Parameters:**
 - `teamId` (string, UUID, required)
@@ -1737,7 +1871,7 @@ Update team. **Admin only.**
 
 ### DELETE /teams/:teamId
 
-Delete team. **Admin only.**
+Delete team.
 
 **Path Parameters:**
 - `teamId` (string, UUID, required)
@@ -1748,7 +1882,7 @@ Delete team. **Admin only.**
 
 ### POST /teams/:teamId/members
 
-Add members to team. **Admin only.**
+Add members to team.
 
 **Path Parameters:**
 - `teamId` (string, UUID, required)
@@ -1772,7 +1906,7 @@ Add members to team. **Admin only.**
 
 ### DELETE /teams/:teamId/members
 
-Remove members from team. **Admin only.**
+Remove members from team.
 
 **Path Parameters:**
 - `teamId` (string, UUID, required)
@@ -2060,9 +2194,9 @@ Check if voting is open.
 
 ---
 
-### POST /votes/admin/toggle
+### POST /votes/toggle
 
-Toggle voting open/closed. **Admin only.**
+Toggle voting open/closed.
 
 **Request:** No body
 
@@ -2309,7 +2443,7 @@ Get presentation by ID.
 
 ### POST /presentations/initialize
 
-Initialize presentation queue. **Admin only.**
+Initialize presentation queue.
 
 Creates presentation entries for all teams in random order.
 
@@ -2321,7 +2455,7 @@ Creates presentation entries for all teams in random order.
 
 ### POST /presentations/:id/start
 
-Start a presentation. **Admin only.**
+Start a presentation.
 
 **Path Parameters:**
 - `id` (string, UUID, required)
@@ -2332,7 +2466,7 @@ Start a presentation. **Admin only.**
 
 ### POST /presentations/next
 
-Advance to next presentation. **Admin only.**
+Advance to next presentation.
 
 Marks current as completed, starts next in queue.
 
@@ -2344,7 +2478,7 @@ Marks current as completed, starts next in queue.
 
 ### POST /presentations/reset
 
-Reset presentation queue. **Admin only.**
+Reset presentation queue.
 
 Deletes all presentations.
 
@@ -2383,7 +2517,7 @@ Get current timer state.
 
 ### POST /timer/start
 
-Start timer. **Admin only.**
+Start timer.
 
 **Request (optional):**
 
@@ -2400,7 +2534,7 @@ Start timer. **Admin only.**
 
 ### POST /timer/pause
 
-Pause timer. **Admin only.**
+Pause timer.
 
 **Request:** No body
 
@@ -2410,7 +2544,7 @@ Pause timer. **Admin only.**
 
 ### POST /timer/resume
 
-Resume paused timer. **Admin only.**
+Resume paused timer.
 
 **Request:** No body
 
@@ -2420,7 +2554,7 @@ Resume paused timer. **Admin only.**
 
 ### POST /timer/reset
 
-Reset timer. **Admin only.**
+Reset timer.
 
 **Request:** No body
 
@@ -2552,7 +2686,7 @@ socket.on('vote:count:update', (data: { teamId: string, count: number }) => {});
 5. GET /votes/me → Confirm vote was recorded
 ```
 
-### 3. Admin: Running Presentations
+### 3. Running Presentations
 
 ```
 1. POST /presentations/initialize → Create queue
@@ -2609,7 +2743,7 @@ socket.emit('leaderboard:subscribe');
 socket.on('leaderboard:update', (entries) => updateUI(entries));
 ```
 
-### 6. Admin Event Management Flow
+### 6. Event Management Flow
 
 ```typescript
 // 1. Create teams before event

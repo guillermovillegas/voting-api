@@ -115,14 +115,15 @@ npm run db:migrate:status
 
 ### Authentication
 
-- User registration with strong password requirements
+- **Simple mode**: Just provide a name via `/auth/join` (no password required)
+- **Full mode**: User registration with email/password
 - JWT-based auth with access + refresh tokens
-- Role-based access control (admin/voter)
+- X-User-Id header auth for training sessions
 - Password change with verification
 
 ### Team Management
 
-- CRUD operations (admin only)
+- CRUD operations for teams
 - Member assignment (3-6 members enforced)
 - Presentation order tracking
 
@@ -132,7 +133,7 @@ npm run db:migrate:status
 - Self-vote prevention (database trigger)
 - Private notes and rankings per team
 - Vote export (JSON/CSV)
-- Admin-controlled voting windows
+- Voting windows can be toggled open/closed
 
 ### Real-time Updates
 
@@ -155,11 +156,14 @@ Base URL: `/api/v1/`
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/auth/register` | POST | Create new user |
+| `/auth/join` | POST | Simple user creation (no password) |
+| `/auth/setup` | POST | Setup user with team (training mode) |
+| `/auth/register` | POST | Create new user with password |
 | `/auth/login` | POST | Authenticate user |
 | `/auth/logout` | POST | Invalidate session |
 | `/auth/refresh` | POST | Refresh access token |
 | `/auth/me` | GET | Get current user |
+| `/auth/me` | PUT | Update user profile |
 | `/auth/password` | PUT | Change password |
 
 ### Teams
@@ -169,9 +173,9 @@ Base URL: `/api/v1/`
 | `/teams` | GET | List all teams |
 | `/teams/:id` | GET | Get team details |
 | `/teams/:id/members` | GET | Get team with members |
-| `/teams` | POST | Create team (admin) |
-| `/teams/:id` | PATCH | Update team (admin) |
-| `/teams/:id` | DELETE | Delete team (admin) |
+| `/teams` | POST | Create team |
+| `/teams/:id` | PATCH | Update team |
+| `/teams/:id` | DELETE | Delete team |
 
 ### Voting
 
@@ -183,7 +187,7 @@ Base URL: `/api/v1/`
 | `/votes/notes/export` | GET | Export notes (JSON/CSV) |
 | `/votes/notes` | PUT | Update private note |
 | `/votes/status` | GET | Check if voting is open |
-| `/votes/admin/toggle` | POST | Toggle voting (admin) |
+| `/votes/toggle` | POST | Toggle voting open/closed |
 
 ### Leaderboard
 
@@ -198,10 +202,10 @@ Base URL: `/api/v1/`
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/timer` | GET | Get timer state |
-| `/timer/start` | POST | Start timer (admin) |
-| `/timer/pause` | POST | Pause timer (admin) |
-| `/timer/resume` | POST | Resume timer (admin) |
-| `/timer/reset` | POST | Reset timer (admin) |
+| `/timer/start` | POST | Start timer |
+| `/timer/pause` | POST | Pause timer |
+| `/timer/resume` | POST | Resume timer |
+| `/timer/reset` | POST | Reset timer |
 
 ## Database Schema
 

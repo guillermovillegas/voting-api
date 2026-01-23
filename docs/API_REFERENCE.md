@@ -4,24 +4,96 @@ Base URL: `http://localhost:3000/api/v1`
 
 ## Authentication
 
-All endpoints except `/health` and `/leaderboard` require authentication.
+There are two authentication methods:
 
-Include the token in the `Authorization` header:
+### 1. X-User-Id Header (Recommended for Training)
+Simple header-based auth for training and demos. No passwords required.
+
+```
+X-User-Id: <user-uuid>
+X-User-Name: <display-name>  (optional)
+```
+
+Get a user ID by calling `POST /auth/join` with just a name.
+
+### 2. JWT Bearer Token
+Traditional token-based auth for production use.
+
 ```
 Authorization: Bearer <access-token>
 ```
+
+Get tokens via `POST /auth/login` or `POST /auth/register`.
 
 ---
 
 ## Auth Endpoints
 
-### POST /auth/register
-Create a new user account.
+### POST /auth/join
+**Simple user creation - no password required.**
+
+Creates a new user with just a name. Server generates the user ID.
+Frontend should store the returned ID and send it as `X-User-Id` header on future requests.
 
 **Request Body:**
 ```json
 {
-  "username": "string (required)",
+  "name": "string (required, 1-100 chars)"
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "uuid",
+      "email": "user-uuid@voting.app",
+      "name": "string",
+      "role": "voter",
+      "teamId": null
+    },
+    "message": "Welcome! Store your user ID to stay logged in."
+  }
+}
+```
+
+### POST /auth/setup
+**Training mode setup - requires X-User-Id header.**
+
+Sets up a user with name and team assignment. Used for training sessions.
+
+**Headers Required:**
+```
+X-User-Id: <uuid>
+```
+
+**Request Body:**
+```json
+{
+  "name": "string (required)",
+  "teamId": "uuid (required)"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "user": { "id": "uuid", "name": "string", "teamId": "uuid", ... },
+    "message": "Setup complete"
+  }
+}
+```
+
+### POST /auth/register
+Create a new user account with email and password.
+
+**Request Body:**
+```json
+{
   "name": "string (required)",
   "email": "string (required, valid email)",
   "password": "string (required, 8+ chars with uppercase, lowercase, number, special char)"
@@ -91,8 +163,33 @@ Get current user profile.
 }
 ```
 
+### PUT /auth/me
+Update current user's profile.
+
+**Request Body:**
+```json
+{
+  "name": "string (optional, 1-100 chars)",
+  "teamId": "uuid|null (optional)"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid",
+    "email": "string",
+    "name": "string",
+    "role": "voter",
+    "teamId": "uuid|null"
+  }
+}
+```
+
 ### PUT /auth/password
-Change password.
+Change password (only for users with passwords).
 
 **Request Body:**
 ```json
@@ -131,7 +228,7 @@ Get team by ID.
 ### GET /teams/:teamId/members
 Get team with member details.
 
-### POST /teams (Admin)
+### POST /teams
 Create a team.
 
 **Request Body:**
@@ -142,13 +239,13 @@ Create a team.
 }
 ```
 
-### PATCH /teams/:teamId (Admin)
+### PATCH /teams/:teamId
 Update a team.
 
-### DELETE /teams/:teamId (Admin)
+### DELETE /teams/:teamId
 Delete a team.
 
-### POST /teams/:teamId/members (Admin)
+### POST /teams/:teamId/members
 Add members to team.
 
 **Request Body:**
@@ -158,7 +255,7 @@ Add members to team.
 }
 ```
 
-### DELETE /teams/:teamId/members (Admin)
+### DELETE /teams/:teamId/members
 Remove members from team.
 
 ---
@@ -244,7 +341,7 @@ Get vote count for a team.
 ### GET /votes/status
 Get voting open/closed status.
 
-### POST /votes/admin/toggle (Admin)
+### POST /votes/toggle
 Toggle voting on/off.
 
 ---
@@ -294,16 +391,16 @@ Get completed presentations.
 ### GET /presentations/status
 Get queue status.
 
-### POST /presentations/initialize (Admin)
+### POST /presentations/initialize
 Initialize presentation queue (randomizes order).
 
-### POST /presentations/:id/start (Admin)
+### POST /presentations/:id/start
 Start a presentation.
 
-### POST /presentations/next (Admin)
+### POST /presentations/next
 Advance to next presentation.
 
-### POST /presentations/reset (Admin)
+### POST /presentations/reset
 Reset the queue.
 
 ---
@@ -330,7 +427,7 @@ Get current timer state.
 ### GET /timer/remaining
 Get remaining time in seconds.
 
-### POST /timer/start (Admin)
+### POST /timer/start
 Start timer.
 
 **Request Body:**
@@ -340,13 +437,13 @@ Start timer.
 }
 ```
 
-### POST /timer/pause (Admin)
+### POST /timer/pause
 Pause timer.
 
-### POST /timer/reset (Admin)
+### POST /timer/reset
 Reset timer.
 
-### PUT /timer/duration (Admin)
+### PUT /timer/duration
 Set timer duration.
 
 **Request Body:**
@@ -359,6 +456,8 @@ Set timer duration.
 ---
 
 ## Admin Endpoints
+
+These endpoints provide system statistics and management.
 
 ### GET /admin/stats
 System statistics.

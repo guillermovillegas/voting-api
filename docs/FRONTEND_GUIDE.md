@@ -12,10 +12,18 @@ npm install socket.io-client
 
 ### API Client Setup
 
+The API supports two authentication methods:
+1. **X-User-Id Header** (Recommended for training) - Simple, no passwords
+2. **JWT Bearer Token** - Traditional auth for production
+
 ```javascript
 // api.js
 const API_URL = 'http://localhost:3000/api/v1';
 
+// For simple auth (training mode)
+let userId = localStorage.getItem('userId');
+
+// For JWT auth (production)
 let accessToken = localStorage.getItem('accessToken');
 
 // Helper for authenticated requests
@@ -25,7 +33,12 @@ async function fetchAPI(endpoint, options = {}) {
     ...options.headers,
   };
 
-  if (accessToken) {
+  // Use X-User-Id header if available (simple auth)
+  if (userId) {
+    headers['X-User-Id'] = userId;
+  }
+  // Fall back to Bearer token (JWT auth)
+  else if (accessToken) {
     headers['Authorization'] = `Bearer ${accessToken}`;
   }
 
@@ -43,11 +56,34 @@ async function fetchAPI(endpoint, options = {}) {
   return data;
 }
 
-// Auth functions
-export async function register(username, name, email, password) {
+// ========== SIMPLE AUTH (Recommended for Training) ==========
+
+// Join - creates a user with just a name
+export async function join(name) {
+  const data = await fetchAPI('/auth/join', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+  userId = data.data.user.id;
+  localStorage.setItem('userId', userId);
+  return data.data.user;
+}
+
+// Setup - join a team after joining
+export async function setup(name, teamId) {
+  const data = await fetchAPI('/auth/setup', {
+    method: 'POST',
+    body: JSON.stringify({ name, teamId }),
+  });
+  return data.data.user;
+}
+
+// ========== JWT AUTH (Production) ==========
+
+export async function register(name, email, password) {
   const data = await fetchAPI('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ username, name, email, password }),
+    body: JSON.stringify({ name, email, password }),
   });
   accessToken = data.data.accessToken;
   localStorage.setItem('accessToken', accessToken);
@@ -67,13 +103,24 @@ export async function login(email, password) {
 }
 
 export async function logout() {
+  userId = null;
   accessToken = null;
+  localStorage.removeItem('userId');
   localStorage.removeItem('accessToken');
   localStorage.removeItem('refreshToken');
 }
 
 export async function getCurrentUser() {
   return (await fetchAPI('/auth/me')).data;
+}
+
+// Update profile (name and/or team)
+export async function updateProfile(name, teamId) {
+  const data = await fetchAPI('/auth/me', {
+    method: 'PUT',
+    body: JSON.stringify({ name, teamId }),
+  });
+  return data.data;
 }
 
 // Teams
@@ -142,7 +189,54 @@ export async function getRemainingTime() {
 
 ## React Components Examples
 
-### Login Form
+### Join Form (Simple Auth - Recommended)
+
+```jsx
+import { useState } from 'react';
+import { join } from './api';
+
+function JoinForm({ onJoin }) {
+  const [name, setName] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const user = await join(name);
+      onJoin(user);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <h2>Join the Voting</h2>
+      {error && <div className="error">{error}</div>}
+
+      <input
+        type="text"
+        placeholder="Your Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        required
+      />
+
+      <button type="submit" disabled={loading}>
+        {loading ? 'Joining...' : 'Join'}
+      </button>
+    </form>
+  );
+}
+```
+
+### Login Form (JWT Auth - Production)
 
 ```jsx
 import { useState } from 'react';
@@ -475,19 +569,20 @@ function PresentationTimer() {
 
 ## Quick Start Checklist
 
-1. [ ] Set up API client with token handling
-2. [ ] Implement login/register forms
+1. [ ] Set up API client with X-User-Id header support
+2. [ ] Implement join form (or login for production)
 3. [ ] Create team list with vote buttons
 4. [ ] Add live leaderboard with WebSocket
 5. [ ] Build presentation timer display
 6. [ ] Add private notes feature
-7. [ ] Implement admin controls (if admin user)
+7. [ ] Implement event management controls
 
 ## Best Practices
 
-1. **Store tokens in localStorage** for persistence
-2. **Handle 401 errors** by redirecting to login
-3. **Use WebSocket for live updates** instead of polling
-4. **Show loading states** during API calls
-5. **Display user-friendly error messages**
-6. **Disable vote button** after final vote submitted
+1. **Use X-User-Id for training**, Bearer tokens for production
+2. **Store user ID in localStorage** for persistence
+3. **Handle 401 errors** by redirecting to join/login
+4. **Use WebSocket for live updates** instead of polling
+5. **Show loading states** during API calls
+6. **Display user-friendly error messages**
+7. **Disable vote button** after final vote submitted

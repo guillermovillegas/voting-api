@@ -89,6 +89,49 @@ export async function updateUserTeam(userId: string, teamId: string | null): Pro
 }
 
 /**
+ * Update user profile (name and/or team)
+ */
+export interface UpdateUserProfileInput {
+  name?: string;
+  teamId?: string | null;
+}
+
+export async function updateUserProfile(userId: string, input: UpdateUserProfileInput): Promise<UserRow | null> {
+  const updates: string[] = [];
+  const values: (string | null)[] = [];
+  let paramIndex = 1;
+
+  if (input.name !== undefined) {
+    updates.push(`name = $${paramIndex}`);
+    values.push(input.name);
+    paramIndex++;
+  }
+
+  if (input.teamId !== undefined) {
+    updates.push(`team_id = $${paramIndex}`);
+    values.push(input.teamId);
+    paramIndex++;
+  }
+
+  if (updates.length === 0) {
+    return findUserById(userId);
+  }
+
+  updates.push('updated_at = NOW()');
+  values.push(userId);
+
+  const result = await query<UserRow>(
+    `UPDATE users
+     SET ${updates.join(', ')}
+     WHERE id = $${paramIndex}
+     RETURNING id, email, password, name, role, team_id, created_at, updated_at`,
+    values
+  );
+
+  return result.rows[0] || null;
+}
+
+/**
  * Get user's team ID
  */
 export async function getUserTeamId(userId: string): Promise<string | null> {

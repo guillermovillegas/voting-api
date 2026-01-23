@@ -15,7 +15,7 @@ import {
   teamIdSchema,
 } from './teams.validation';
 import type { TeamId, UserId } from '@voting/shared';
-import { userIdAuth, requireAuth, requireAdmin, type AuthenticatedRequest } from '../auth/auth.middleware';
+import { userIdAuth, requireAuth, type AuthenticatedRequest } from '../auth/auth.middleware';
 import { generalRateLimiter } from '../../core/api/rateLimit';
 import { validateBody, validateParams, teamIdParamSchema, userIdParamSchema } from '../../core/api/validation';
 import { successResponse } from '../../core/api/response';
@@ -134,11 +134,10 @@ router.get(
 
 /**
  * POST /api/v1/teams
- * Create a new team (admin only)
+ * Create a new team
  */
 router.post(
   '/',
-  requireAdmin,
   generalRateLimiter,
   validateBody(createTeamSchema),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -170,11 +169,10 @@ router.post(
 
 /**
  * PATCH /api/v1/teams/:teamId
- * Update a team (admin only)
+ * Update a team
  */
 router.patch(
   '/:teamId',
-  requireAdmin,
   generalRateLimiter,
   validateParams(teamIdParamSchema),
   validateBody(updateTeamSchema),
@@ -210,11 +208,10 @@ router.patch(
 
 /**
  * DELETE /api/v1/teams/:teamId
- * Delete a team (admin only)
+ * Delete a team
  */
 router.delete(
   '/:teamId',
-  requireAdmin,
   generalRateLimiter,
   validateParams(teamIdParamSchema),
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -249,11 +246,10 @@ router.delete(
 
 /**
  * POST /api/v1/teams/:teamId/members
- * Add members to a team (admin only)
+ * Add members to a team
  */
 router.post(
   '/:teamId/members',
-  requireAdmin,
   generalRateLimiter,
   validateParams(teamIdParamSchema),
   validateBody(addMembersSchema),
@@ -289,11 +285,10 @@ router.post(
 
 /**
  * DELETE /api/v1/teams/:teamId/members
- * Remove members from a team (admin only)
+ * Remove members from a team
  */
 router.delete(
   '/:teamId/members',
-  requireAdmin,
   generalRateLimiter,
   validateParams(teamIdParamSchema),
   validateBody(removeMembersSchema),

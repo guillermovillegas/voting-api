@@ -1,15 +1,15 @@
 /**
  * Admin Routes
  *
- * HTTP endpoints for admin operations.
- * All routes require admin role.
+ * HTTP endpoints for system statistics and management.
+ * All routes require authentication (no role restrictions).
  *
  * OWNERSHIP: AGENT_ADMIN
  */
 
 import { Router, type Request, type Response } from 'express';
 import * as adminService from './admin.service';
-import { requireAdmin, type AuthenticatedRequest } from '../auth/auth.middleware';
+import { userIdAuth, requireAuth, type AuthenticatedRequest } from '../auth/auth.middleware';
 import { adminRateLimiter, strictRateLimiter } from '../../core/api/rateLimit';
 import { validateParams, teamIdParamSchema, userIdParamSchema } from '../../core/api/validation';
 import { successResponse } from '../../core/api/response';
@@ -22,8 +22,9 @@ const router = Router();
 // MIDDLEWARE
 // ============================================================================
 
-// All admin routes require admin role
-router.use(requireAdmin);
+// All routes support X-User-Id header OR JWT authentication
+router.use(userIdAuth);
+router.use(requireAuth);
 
 // ============================================================================
 // ROUTES
